@@ -4,7 +4,7 @@ var paths = require('../paths');
 var compilerOptions = require('../babel-options');
 var assign = Object.assign || require('object.assign');
 
-gulp.task('build', function() {
+gulp.task('build-generator', function() {
   return gulp.src(paths.source)
     .pipe(babel(assign({}, compilerOptions)))
     .pipe(gulp.dest(paths.output));
