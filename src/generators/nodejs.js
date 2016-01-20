@@ -16,11 +16,14 @@ export default class NodeJSGenerator {
     );
     fs.closeSync(fd);
 
-    var test = new gutil.Test;
-    test.cached();
-    test.cached();
+    var test = new gutil.Test('test');
 
-    test.cached2(1, 2, 3);
-    test.cached2(1, 1, 1);
+    test.cached(1, 2, 3);
+    test.cached(1, 1, 1);
+
+    var test2 = new gutil.Test('test2');
+
+    test2.cachedWithParms(2, 3, 4);
+    test2.cachedWithParms(1, 1, 1);
   }
 }

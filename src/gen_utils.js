@@ -1,39 +1,41 @@
 
 
 export class Test {
-  constructor() {
+  constructor(name) {
+    this.name = "class " + name;
   }
 
-  cached() {
-    // DO something that takes a very long time to calc x
-    console.log('Computing...');
-    var x = 0;
-    delete this.cached
-    this.cached = function() { console.log('returning pre-computed'); return x; }
-    return this.cached();
+  @cachingFunc
+  cached(x, y, z) {
+    console.log(`computing cached using ${x}, ${y}, ${z} ${this.name}`);
+    return x + y + z;
   }
 
-  cached2 = cachingFunc((x, y, z, ...args) => {
-    console.log(`computing cached2 ${x}, ${y}, ${z}, ...${args}`);
-    var result = x + y + z;
-    console.log(`result is ${result}`);
-    return result;
-  })
+  @cachingFuncWithParms(1)
+  cachedWithParms(x, y, z) {
+    console.log(`computing cached with parms using ${x}, ${y}, ${z} ${this.name}`);
+    return x + y + z;
+  }
 }
 
-var cachingFunc = (func) => {
-  var fobj = {}
-  fobj.func = func;
-  fobj.calced = false;
-  fobj.cfunc = (...args) => {
-    if(fobj.calced) {
-      console.log(`returning cached value ${fobj.results}`)
-      return fobj.results;
+// Doesn't work with different arguments
+function cachingFunc(target, key, descriptor) {
+  console.log(target);
+  console.log(descriptor);
+  const method = descriptor.value;
+  descriptor.value = function(...args) {
+    console.log(this);
+    var result = method.apply(this, args);
+    delete target[key];
+    target[key] = (...args) => {
+      console.log(`returning cached value ${result}`);
+      return result;
     }
-    console.log(`cfunc args ${args}`);
-    fobj.results = fobj.func.call(null, ...args);
-    fobj.calced = true;
-    return fobj.results;
+    return target[key](...args);
   }
-  return fobj.cfunc;
+  return descriptor;
+}
+
+function cachingFuncWithParms(x) {
+  return cachingFunc;
 }
