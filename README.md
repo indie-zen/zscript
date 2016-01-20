@@ -14,7 +14,7 @@ npm install
 ```shell
 sudo npm install -g gulp
 ```
-4. Build the code
+4. Generate the code
 ```shell
-gulp build
+gulp gen
 ```
