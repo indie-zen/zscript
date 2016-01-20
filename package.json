@@ -17,9 +17,5 @@
     "gulp-exec" : "^2.1.2",
     "require-dir": "^0.1.0",
     "vinyl-paths": "^1.0.0"
-  },
-  "preferGlobal" : true,
-  "bin" : {
-    "metazen" : "dist/main.js"
   }
 }

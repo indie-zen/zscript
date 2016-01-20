@@ -1,6 +1,6 @@
 var gulp = require('gulp');
 var exec = require('gulp-exec');
-var paths = require('../paths');
+var config = require('../config');
 
 gulp.task('generate', ['build-generator'], function() {
   var options = {
@@ -12,7 +12,15 @@ gulp.task('generate', ['build-generator'], function() {
   	stderr : true,
   	stdout : true
   }
-  gulp.src(paths.source)
+  return gulp.src(config.roots.gen_exe)
     .pipe(exec('node ./dist/main.js', options))
     .pipe(exec.reporter(reportOptions));
 });
+
+gulp.task('done', function() {
+  console.log("Done!");
+});
+
+gulp.task('gen', ['generate']);
+
+gulp.task('default', ['done']);

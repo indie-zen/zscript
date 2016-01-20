@@ -31,3 +31,6 @@ dist
 
 # CSS generated from Sassy CSS
 app/css
+
+# Ignore generated code
+gen
