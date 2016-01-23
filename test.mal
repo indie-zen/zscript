@@ -1,0 +1,32 @@
+
+; Playing around with Mal
+
+(defmacro! defn (fn* (name args body)
+  `(def! ~name (fn* ~args ~body))))
+
+(println
+  (macroexpand (defn test (x y) (+ x y))))
+
+(println
+  (macroexpand (defn hello () "hello" ) ) )
+
+(defn test [x y] (+ x y))
+(defn hello [] "hello")
+(defn argcount [& more] (count more))
+
+; Memoize from Closure
+; the goal is to make this work properly
+; in mal / zscript
+; and then move to bootstrap.mal.
+; One note about zscript, though, is memoize isn't
+; good enough.  We need a mechanism so that a function will
+; re-execute if any dependencies have changed, not just if the
+; arguments changed.
+(defn memoize [f]
+  (let [mem (atom {})]
+    (fn [& args]
+      (if-let [e (find @mem args)]
+        (val e)
+        (let [ret (apply f args)]
+          (swap! mem assoc args ret)
+          ret)))))

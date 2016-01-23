@@ -16,6 +16,7 @@
     "gulp-babel" : "^5.1.0",
     "gulp-exec" : "^2.1.2",
     "require-dir": "^0.1.0",
-    "vinyl-paths": "^1.0.0"
+    "vinyl-paths": "^1.0.0",
+    "ffi": "^2.0.0"
   }
 }
