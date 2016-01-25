@@ -1,6 +1,7 @@
 var gulp = require('gulp');
 var exec = require('gulp-exec');
 var config = require('../config');
+var child_process = require('child_process');
 
 gulp.task('generate', ['build-generator'], function() {
   var options = {
@@ -19,6 +20,14 @@ gulp.task('generate', ['build-generator'], function() {
 
 gulp.task('done', function() {
   console.log("Done!");
+});
+
+gulp.task('mal', ['build-generator'], function(cb) {
+  child_process.exec('node ./dist/mal/mal.js test.mal', function(err, stdout, stderr) {
+    console.log(stdout);
+    console.log(stderr);
+    cb(err);
+  });
 });
 
 gulp.task('gen', ['generate']);

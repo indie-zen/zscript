@@ -10,13 +10,13 @@ License 2.0). The text of the MPL 2.0 license is included below and
 can be found at https://www.mozilla.org/MPL/2.0/
 */
 
-import { readline } from './mal/node_readline'
+import { readline } from './node_readline'
 import { _symbol, _symbol_Q, _list_Q, _vector, _vector_Q,
-         _hash_map_Q, _sequential_Q, _malfunc, _malfunc_Q } from './mal/types'
-import { BlankException, read_str } from './mal/reader'
-import { pr_str } from './mal/printer'
-import { new_env, env_set, env_get } from './mal/env'
-import { core_ns } from './mal/core'
+         _hash_map_Q, _sequential_Q, _malfunc, _malfunc_Q } from './types'
+import { BlankException, read_str } from './reader'
+import { pr_str } from './printer'
+import { new_env, env_set, env_get } from './env'
+import { core_ns } from './core'
 
 // read
 const READ = (str) => read_str(str)
@@ -50,7 +50,6 @@ function macroexpand(ast, env) {
     }
     return ast
 }
-
 
 const eval_ast = (ast, env) => {
     if (_symbol_Q(ast)) {
@@ -126,8 +125,16 @@ const EVAL = (ast, env) => {
             }
             break; // continue TCO loop
         case 'fn*':
-            return _malfunc((...args) => EVAL(a2, new_env(env, a1, args)),
-                    a2, env, a1)
+            let fn = _malfunc((...args) => EVAL(a2, new_env(env, a1, args)),
+                    a2, env, a1);
+            let fn2 = (...args) => {
+              console.log('Calling function');
+              console.log(fn);
+              console.log('with args');
+              console.log(args);
+              return fn(...args);
+            }
+            return fn2;
         default:
             let [f, ...args] = eval_ast(ast, env)
             if (_malfunc_Q(f)) {
@@ -159,6 +166,7 @@ REP('(def! not (fn* (a) (if a false true)))')
 REP('(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) ")")))))')
 REP('(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list \'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond")) (cons \'cond (rest (rest xs)))))))')
 REP('(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))')
+REP(`(load-file "bootstrap.mal")`)
 
 if (process.argv.length > 2) {
     env_set(repl_env, '*ARGV*', process.argv.slice(3))

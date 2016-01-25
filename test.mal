@@ -30,3 +30,6 @@
         (let [ret (apply f args)]
           (swap! mem assoc args ret)
           ret)))))
+
+(hello)
+(test 1 (test 1 1))
