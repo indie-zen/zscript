@@ -30,6 +30,14 @@ gulp.task('mal', ['build-generator'], function(cb) {
   });
 });
 
+gulp.task('zscript', ['build-generator'], function(cb) {
+  child_process.exec('node ./dist/zscript/main.js test.zs', function(err, stdout, stderr) {
+    console.log(stdout);
+    console.log(stderr);
+    cb(err);
+  });
+});
+
 gulp.task('gen', ['generate']);
 
 gulp.task('default', ['done']);

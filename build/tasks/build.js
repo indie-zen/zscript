@@ -9,3 +9,5 @@ gulp.task('build-generator', function() {
     .pipe(babel(assign({}, compilerOptions)))
     .pipe(gulp.dest(config.roots.gen_exe));
 });
+
+gulp.task('build', ['build-generator']);
