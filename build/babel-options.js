@@ -3,9 +3,6 @@ module.exports = {
   moduleIds : false,
   comments : false,
   compact : false,
-  stage : 2,
-  optional : [
-    'es7.decorators',
-    'es7.classProperties'
-  ]
+  presets : ['es2015-node5'],
+  plugins : [ 'transform-decorators-legacy', 'transform-class-properties' ]
 };
