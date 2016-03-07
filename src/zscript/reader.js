@@ -76,6 +76,11 @@ function readList(tokenIterator, start='(', end=')') {
   return ast;
 }
 
+// Read a vector of tokens
+function readVector(tokenIterator) {
+  return type._vector(...readList(tokenIterator, '[', ']'));
+}
+
 function readNextExpression(tokenIterator) {
   const token = tokenIterator.peek();
   switch(token) {
@@ -87,6 +92,9 @@ function readNextExpression(tokenIterator) {
     case ')': throw new Error("Unexpected ')'");
     case '(': return readList(tokenIterator);
 
+    // vector
+    case ']': throw new Error("Unexpected ']'");
+    case '[': return readVector(tokenIterator);
     // atom
     default:
       return readAtom(tokenIterator);
