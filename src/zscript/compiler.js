@@ -59,6 +59,34 @@ function compileAST(ast, env) {
   }
 }
 
+class FunctionService {
+  constructor() {
+    this.funcs = new Map();
+  }
+
+  createFunction(name, args, body) {
+    console.log('creating function');
+    console.log(this);
+    console.log(this.funcs);
+    // TODO Need to support name spaces; should
+    // there be a FunctionService for each namespace?
+    const nameString = Symbol.keyFor(name);
+    console.log(`Creating new function ${nameString}`);
+    const newFunc = new FunctionDefinition(nameString, args, body);
+    this.funcs.set(nameString, newFunc);
+    return newFunc;
+  }
+
+  createFunctionCall(name, ...args) {
+    // TODO Need to track this?  Probably, to eventually determine
+    // if all calls evaluate to a function that exists.
+    const nameString = Symbol.keyFor(name);
+    return new FunctionCall(nameString, ...args);
+  }
+}
+
+export var functionService = new FunctionService();
+
 export function compileScript(ast, env) {
   while(true) {
     if (types.getType(ast) != 'array') {
@@ -76,25 +104,55 @@ export function compileScript(ast, env) {
         const body = compileScript(an[0]);
         console.log('Got body');
         console.log(body);
-        var newFunc = types.functionService.createFunction(a1, a2, body);
+        var newFunc = functionService.createFunction(a1, a2, body);
         console.log(newFunc);
         return newFunc;
       default:
-        const args = [ a1, a2, ...an ];
+        const args = Array.from([ a1, a2, ...an ],
+            value => compileScript(value, env))
         // TODO compileScript for each of the args
-        console.log('Creating function call with ');
-        console.log(args);
-        return types.functionService.createFunctionCall(a0, ...args);
+        return functionService.createFunctionCall(a0, ...args);
     }
   }
 }
 
-export var globalEnv = newEnv({});
+// Functions:
+//
+// FunctionDefinition
+// FunctionCall
 
-export function rep(str) {
-  return objToString(evalScript(read(str), globalEnv));
+export class FunctionDefinition {
+  constructor(name, args, body) {
+    this.name = name;
+    this.args = args;
+    this.body = body;
+    console.log(`fn name = ${name}`);
+    console.log('args');
+    console.log(args);
+    console.log('body');
+    console.log(body);
+  }
 }
+
+export class FunctionCall {
+  constructor(name, ...args) {
+    this.name = name;
+    this.args = args;
+    console.log(`Call to function ${name} with args:`);
+    console.log(args);
+  }
+}
+
+//
+// Environment
+//
+export var globalEnv = newEnv({});
 
 for (let [k, v] of core.namespace) {
   setEnv(globalEnv, types._symbol(k), v);
+}
+
+// Read evaluate print
+export function rep(str) {
+  return objToString(evalScript(read(str), globalEnv));
 }
