@@ -8,3 +8,6 @@
 ;(def test [text] (def name [] (text)))
 
 ;(test 'test')
+
+; Nested calls
+(sum (sum 3 4) 5)
