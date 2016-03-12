@@ -48,7 +48,6 @@ function evalScript(ast, env) {
   }
 }
 
-
 function compileAST(ast, env) {
   const astType = types.getType(ast);
   switch(astType) {
@@ -64,16 +63,9 @@ class FunctionService {
     this.funcs = new Map();
   }
 
-  createFunction(name, args, body) {
+  createFunction(args, body) {
     console.log('creating function');
-    console.log(this);
-    console.log(this.funcs);
-    // TODO Need to support name spaces; should
-    // there be a FunctionService for each namespace?
-    const nameString = Symbol.keyFor(name);
-    console.log(`Creating new function ${nameString}`);
-    const newFunc = new FunctionDefinition(nameString, args, body);
-    this.funcs.set(nameString, newFunc);
+    const newFunc = new FunctionDefinition(args, body);
     return newFunc;
   }
 
@@ -97,23 +89,45 @@ export function compileScript(ast, env) {
     const a0type = types.getType(a0);
     const a0sym = a0type === 'symbol' ? Symbol.keyFor(a0) : Symbol(':default');
     switch(a0sym) {
-      // Define a new function
+      // Define a variable
       case 'def':
+        env[a1] = compileScript(a2, env);
+        return null;
+      // Define a new function
+      case 'func':
         console.log('Compiling body');
-        console.log(an[0]);
-        const body = compileScript(an[0]);
+        console.log(a2);
+        const body = compileScript(a2, env);
         console.log('Got body');
         console.log(body);
-        var newFunc = functionService.createFunction(a1, a2, body);
+        var newFunc = functionService.createFunction(a1, body);
         console.log(newFunc);
         return newFunc;
+      case 'require':
+        console.log('Loading file');
+        console.log(a2);
+        console.log(an);
+        var loadEnv = newEnv();
+        loadFile(a2, loadEnv);
+        setEnv(env, a1, loadEnv);
+        console.log(`${env}`);
+        console.log(Object.getOwnPropertySymbols(env));
+        return null;
       default:
-        const args = Array.from([ a1, a2, ...an ],
+        const args = Array.from(ast.slice(1),
             value => compileScript(value, env))
         // TODO compileScript for each of the args
         return functionService.createFunctionCall(a0, ...args);
     }
   }
+}
+
+export function loadFile(fileName, env) {
+  var loadedFile = core.slurp(fileName);
+  var ast = read(loadedFile);
+  var newScript = compileScript(ast, env);
+  console.log('Loaded file, new env');
+  console.log(`${env}`);
 }
 
 // Functions:
@@ -122,15 +136,17 @@ export function compileScript(ast, env) {
 // FunctionCall
 
 export class FunctionDefinition {
-  constructor(name, args, body) {
-    this.name = name;
+  constructor(args, body) {
     this.args = args;
     this.body = body;
-    console.log(`fn name = ${name}`);
     console.log('args');
     console.log(args);
     console.log('body');
     console.log(body);
+  }
+
+  toString() {
+    return "FunctionDefinition";
   }
 }
 
@@ -141,12 +157,16 @@ export class FunctionCall {
     console.log(`Call to function ${name} with args:`);
     console.log(args);
   }
+
+  toString() {
+    return "FunctionCall";
+  }
 }
 
 //
 // Environment
 //
-export var globalEnv = newEnv({});
+export var globalEnv = newEnv();
 
 for (let [k, v] of core.namespace) {
   setEnv(globalEnv, types._symbol(k), v);

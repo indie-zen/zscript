@@ -12,7 +12,7 @@ if (process.argv.length > 2) {
     var line = lines[lineNo];
     var ast = zs.compiler.read(line);
     console.log(`line ${lineNo}: ${line}`);
-    var output = zs.compiler.compileScript(ast, zs.globalEnv);
+    var output = zs.compiler.compileScript(ast, zs.compiler.globalEnv);
     console.log(zs.objToString(output));
   }
 } else {

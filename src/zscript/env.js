@@ -1,5 +1,17 @@
-export function newEnv(outer={}, binds=[], exprs=[]) {
-    var e = Object.setPrototypeOf({}, outer)
+class Environment {
+  toString() {
+    var symbols = Object.getOwnPropertySymbols(this);
+    return "Environment { " + Array.from(symbols,
+        k => `${Symbol.keyFor(k)} : ${this[k]}`).join(', ')
+      + " }";
+  }
+
+  // TODO Move getEnv and setEnv to this class;
+  // What about newEnv?  Move to constructor?
+}
+
+export function newEnv(outer=new Environment(), binds=[], exprs=[]) {
+    var e = Object.setPrototypeOf(new Environment(), outer)
     // Bind symbols in binds to values in exprs
     for (var i=0; i<binds.length; i++) {
         if (Symbol.keyFor(binds[i]) === "&") {
@@ -20,4 +32,6 @@ export const getEnv = (env, sym) => {
     }
 }
 
-export const setEnv = (env, sym, val) => env[sym] = val
+export function setEnv(env, sym, val) {
+  env[sym] = val;
+}
