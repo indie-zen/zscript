@@ -110,8 +110,6 @@ export function compileScript(ast, env) {
         var loadEnv = newEnv();
         loadFile(a2, loadEnv);
         setEnv(env, a1, loadEnv);
-        console.log(`${env}`);
-        console.log(Object.getOwnPropertySymbols(env));
         return null;
       default:
         const args = Array.from(ast.slice(1),
@@ -126,8 +124,6 @@ export function loadFile(fileName, env) {
   var loadedFile = core.slurp(fileName);
   var ast = read(loadedFile);
   var newScript = compileScript(ast, env);
-  console.log('Loaded file, new env');
-  console.log(`${env}`);
 }
 
 // Functions:
@@ -144,10 +140,6 @@ export class FunctionDefinition {
     console.log('body');
     console.log(body);
   }
-
-  toString() {
-    return "FunctionDefinition";
-  }
 }
 
 export class FunctionCall {
@@ -156,10 +148,6 @@ export class FunctionCall {
     this.args = args;
     console.log(`Call to function ${name} with args:`);
     console.log(args);
-  }
-
-  toString() {
-    return "FunctionCall";
   }
 }
 
