@@ -1,7 +1,8 @@
 const core = require('./core.js');
 const types = require('./types.js');
 
-const readString = require('./reader.js').readString;
+const reader = require('./reader.js');
+
 import { newEnv, setEnv, getEnv } from './env.js';
 
 export function read(str) {
@@ -64,7 +65,6 @@ class FunctionService {
   }
 
   createFunction(args, body) {
-    console.log('creating function');
     const newFunc = new FunctionDefinition(args, body);
     return newFunc;
   }
@@ -85,6 +85,10 @@ export function compileScript(ast, env) {
       return compileAST(ast, env);
     }
 
+    if(ast.length === 0) {
+      return;
+    }
+
     const [a0, a1, a2, ...an] = ast;
     const a0type = types.getType(a0);
     const a0sym = a0type === 'symbol' ? Symbol.keyFor(a0) : Symbol(':default');
@@ -92,14 +96,11 @@ export function compileScript(ast, env) {
       // Define a variable
       case 'def':
         env[a1] = compileScript(a2, env);
-        return null;
+        console.log(`def ${Symbol.keyFor(a1)} as ${env[a1]}`);
+        return a1;
       // Define a new function
       case 'func':
-        console.log('Compiling body');
-        console.log(a2);
         const body = compileScript(a2, env);
-        console.log('Got body');
-        console.log(body);
         var newFunc = functionService.createFunction(a1, body);
         console.log(newFunc);
         return newFunc;
@@ -107,8 +108,10 @@ export function compileScript(ast, env) {
         console.log('Loading file');
         console.log(a2);
         console.log(an);
+        // Find the name of the file (or eventually other package source)
+        var fileName = core.find_package(a2);
         var loadEnv = newEnv();
-        loadFile(a2, loadEnv);
+        loadFile(fileName, loadEnv);
         setEnv(env, a1, loadEnv);
         return null;
       default:
@@ -121,9 +124,13 @@ export function compileScript(ast, env) {
 }
 
 export function loadFile(fileName, env) {
+  // TODO Don't re-load a file that's already been loaded.
   var loadedFile = core.slurp(fileName);
-  var ast = read(loadedFile);
-  var newScript = compileScript(ast, env);
+  var tokens = reader.tokenize(loadedFile);
+  while(!tokens.isDone()) {
+    var ast = reader.readNextExpression(tokens);
+    compileScript(ast, env);
+  }
 }
 
 // Functions:
@@ -135,10 +142,6 @@ export class FunctionDefinition {
   constructor(args, body) {
     this.args = args;
     this.body = body;
-    console.log('args');
-    console.log(args);
-    console.log('body');
-    console.log(body);
   }
 }
 

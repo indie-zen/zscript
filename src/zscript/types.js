@@ -49,3 +49,18 @@ export function _vector(...args) {
   v.__isvector__ = true;
   return v;
 }
+
+export function _hash_map(...args) {
+  if (args.length %2 === 1) {
+    throw new Error("Construction of a map requires an even number of arguments");
+  }
+  var newMap = {}
+  args.map( (value, index, array) => {
+    if (index %2 === 0) {
+      newMap[value] = args[index + 1];
+    }
+  })
+  console.log(args);
+  console.log(Object.getOwnPropertySymbols(newMap));
+  return newMap;
+}

@@ -1,9 +1,10 @@
-const type = require('./types.js');
+const types = require('./types.js');
 
 class TokenIterator {
   constructor(tokens) {
     this.tokens = tokens;
     this.position = 0;
+    this.length = tokens.length;
   }
 
   next() {
@@ -19,19 +20,19 @@ class TokenIterator {
   }
 
   isDone() {
-    return this.position > tokens.length;
+    return this.position >= this.length;
   }
 }
 
-function tokenize(str) {
+export function tokenize(str) {
     const re = /[\s,]*(~@|[\[\]{}()`~^@]|["'](?:\\.|[^\\"])*["']|;.*|[^\s\[\]{}('"`,;)]*)/g;
-    let match = null;
-    let results = [];
+    var match = null;
+    var results = [];
     while ((match = re.exec(str)[1]) != '') {
         if (match[0] === ';') { continue; }
         results.push(match);
     }
-    return results;
+    return new TokenIterator(results);
 }
 
 function readAtom(tokenIterator) {
@@ -47,7 +48,7 @@ function readAtom(tokenIterator) {
           .replace(/\\n/g, "\n")
           .replace(/\\\\/g, "\\"); // string
   } else if (token[0] === ":") {
-      return type._keyword(token.slice(1));
+      return types._keyword(token.slice(1));
   } else if (token === "nil") {
       return null;
   } else if (token === "true") {
@@ -55,7 +56,7 @@ function readAtom(tokenIterator) {
   } else if (token === "false") {
       return false;
   } else {
-      return type._symbol(token); // symbol
+      return types._symbol(token); // symbol
   }
 }
 
@@ -78,10 +79,15 @@ function readList(tokenIterator, start='(', end=')') {
 
 // Read a vector of tokens
 function readVector(tokenIterator) {
-  return type._vector(...readList(tokenIterator, '[', ']'));
+  return types._vector(...readList(tokenIterator, '[', ']'));
 }
 
-function readNextExpression(tokenIterator) {
+// Read a hash map
+function readHashMap(tokenIterator) {
+  return types._hash_map(...readList(tokenIterator, '{', '}'));
+}
+
+export function readNextExpression(tokenIterator) {
   const token = tokenIterator.peek();
   switch(token) {
     case ';':
@@ -95,6 +101,9 @@ function readNextExpression(tokenIterator) {
     // vector
     case ']': throw new Error("Unexpected ']'");
     case '[': return readVector(tokenIterator);
+
+    case '}': throw new Error("Unexpected '}'");
+    case '{': return readHashMap(tokenIterator);
     // atom
     default:
       return readAtom(tokenIterator);
@@ -111,5 +120,8 @@ export function readString(str) {
 
   // TODO Handle expressions that span more than one line, and
   // handle more than one expression on a single line.
-  return readNextExpression(new TokenIterator(tokens));
+  console.log('Got tokens');
+  console.log(tokens);
+  var ast = readNextExpression(tokens);
+  return (ast, iterator);
 }

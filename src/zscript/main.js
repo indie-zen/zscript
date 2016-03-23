@@ -4,17 +4,14 @@ const zs = require('./zscript.js');
 console.log("Welcome to ZScript");
 
 if (process.argv.length > 2) {
-  // TODO load-file
-  var f = process.argv[2];
-  console.log(`Loading file ${f}`);
-  var lines = zs.slurp(f).split('\n');
-  for (var lineNo in lines) {
-    var line = lines[lineNo];
-    var ast = zs.compiler.read(line);
-    console.log(`line ${lineNo}: ${line}`);
-    var output = zs.compiler.compileScript(ast, zs.compiler.globalEnv);
-    console.log(zs.objToString(output));
-  }
+
+  // TODO Don't hard code the packages
+  zs.core.packages["com.indiezen.metazen"] = "../metazen/metazen.zs"
+
+  // Load the file
+  var fileName = process.argv[2];
+  console.log(`Loading file ${fileName}`);
+  zs.compiler.loadFile(fileName, zs.compiler.globalEnv);
 } else {
   while (true) {
     var line = readline("zscript:> ");
