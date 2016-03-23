@@ -18,32 +18,33 @@ ZScript is a lot like Lisp and Clojure, so why build a new language?
 
 The primary reason is because I want to have a language with the syntax that lends itself to naturally describing what is happening within Zen Spaces.
 
-Other languages can do exactly what ZScript does, and ZScript can do anything these other languages can do, but ZScript reverses the default behavior because the default behavior is what Zen Spaces requires.
+Other languages can do exactly what ZScript does, and ZScript can do anything these other languages can do, but ZScript reverses the default behavior to the default behavior that Zen Spaces assumes. (reactive, meta first, event sourced)
 
 Things that can be done in other languages that require additional syntax or code can be done with ZScript without using any additional code, but some of the things that you might take for granted in other languages (such as setting the value of a field of an object) require additional code in ZScript.
 
-### Metadata vs code
+### Meta Programming
 
 Within ZScript, functions aren't executed immediately because they're built through composition and inheritance.  
 
 When a function is defined and a function call to that function is defined, the calls are not executed, but rather the metadata for functions and function calls are created first, and it takes additional instructions to actually execute the function calls.
 
+The reason is because in Zen Spaces, functions are composed and may take multiple steps to get the desired results.
+
 This could easily be done in Lisp through the use of macros and metadata, but that would require the programmer to always remember to use the metadata and macro syntax.  
 
-With ZScript, the default is the creation of a macro / metadata and it requires additional / special syntax to execute the code.  This is the opposite of Lisp.
+With ZScript, the default is the creation of a macro / metadata and it requires additional / special syntax to execute the code.
 
-Instead of a REPL (read, evaluate, print loop), we have a read, compile, manipulate, subscribe.  The compile / manipulate step is where functions are compiled and then manipulated, and instead of a single execution, the results are a subscription, so if values change then the functions are re-executed as required for the subscription.
+Instead of a REPL (read, evaluate, print loop), we have a read, compile, manipulate, subscribe.  The compile / manipulate steps are where functions are compiled and then manipulated, and instead of a single execution, the results are a subscription, so if values change then the functions are re-executed as required for the subscription.
 
 ### Reactive
 
-Zen Spaces functions are executed in a reactive way, with function calls memoized and normally implemented as a subscription instead of as a single function call.  This could easily be implemented in other languages (Python, ES6, Lisp) but the memoized / reactive functions would require additional syntax instead of being the default.
+Zen Spaces functions are executed in a reactive way, with function calls memoized and normally implemented as a subscription instead of as a single function call.  This could easily be implemented in other languages (Python, ES6, Lisp) but the memoized / reactive functions would require additional syntax instead of being the default behavior
 
 ### Event sourced
 
-Within Zen Spaces, objects are never directly manipulated through setting of properties on objects or directly manipulating values on objects in the way other languages allow.  Instead, classes and collections within Zen Spaces have actions that when activated generate an event.  The target object interprets the event and during this interpretation the object can be manipulated.
+Within Zen Spaces, it's a hard fast rule that objects are never directly manipulated through setting of properties on objects or directly manipulating values on objects in the way other languages allow.  Instead, classes and collections within Zen Spaces have actions that when activated generate an event.  The target object interprets the event and during this interpretation the object can be manipulated.
 
-In the Zen Spaces object data store, instead of storing objects, the events used to create and manipulate the objects are stored.  *(For performance reasons, the resulting object may be cached, and it's possible that different versions of the object can be cached)*  
-
+Because of this, special care needed to be taken to ensure this rule is never broken.  As such, ZScript only allows objects to be manipulated through event handling procedures, and any direct manipulation attempted elsewhere results in a compile time error.  This would be a lot more complicated (and ugly) if this were attempted with another language.  Probably it couldn't be accomplished at compile time, and an additional test step would have to be created to verify that this rule is never broken.
 
 Syntax thoughts and keywords
 ---
