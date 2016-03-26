@@ -66,17 +66,18 @@ A function call like `(+ 1 2)` does not yield the results of 3, but rather it cr
 generates a `FunctionDefinition` with a body that is a `FunctionCall` to `+` using the arguments x and y, and then assigns Symbol sum with the `FunctionDefinition` object.
 
 ### def
-define a symbol to be a specified value.  
+Define a symbol to be a specified value.  
 
-The value may be a `FunctionDefinition`, a `FunctionCall`, or a constant.
+The value may be a `FunctionDefinition`, a `FunctionCall`, a `namespace`, another `symbol` or a constant.
 
 Example:
 
 ```
 (def x 10)
 (def sum (func [x y] (+ x y)))
+(def add sum)
+(add 1 2) ; Equivalent to (sum 1 2)
 ```
-
 
 ### func
 Creates a `FunctionDefinition`
@@ -102,13 +103,22 @@ Defines a procedure, which is essentially a list of function calls.
 When a proc is exec'd, the function calls are actually called.
 
 ### using
-use a namespace for a list of symbols
+Use a namespace for a list of symbols.  Also see `deref`.
 
 Example:
 
 ```
 (using mynamespace a b c)
  => [mynamepace.a mynamepace.b mynamepace.c]
+
+(def foo (def bar (func [x y](+ x y))))
+
+(using mynamespace2 (deref foo))
+(mynamespace2.bar 1 2) ; Correctly constructs function call to bar
+(mynamespace3.foo.bar) ; Error
+
+(using mynamespace3 foo)
+(mynamespace3.foo.bar 1 2) ; Correct
 ```
 
 ### with
@@ -123,17 +133,61 @@ Example:
 
 Can also be `(with [1] print log display)` where the rest of the arguments are converted to a list.
 
+If the list being called is a list of lists, the first argument in the list is the function to call, and the additional items in the list are passed as arguments to the function.
+
+```
+(with [arg] (pairs [print 1 do 2 eat 3]))
+=> (with [arg] [[print 1][do 2][eat 3]])
+=> [(print arg 1)(do arg 2)(eat arg 3)]
+```
+
 
 ### map
-Call a function once for each item in a list of arguments
+Call a function once for each item in a list of arguments, resulting in a list of function calls.
 
 Example:
 
 ```
-(map add1 1 2 3)
+(map add1 [1 2 3])
 => [(add1 1) (add1 2) (add1 3)]
 ```
 
+### call
+Call a function once with a list of arguments.  This helps to convert a list into a list of arguments.
+
+Example:
+```
+(map
+  (call
+    (func [first second](+ first second)))
+  (pairs [1 2 3 4]))
+
+=> (map
+    (call
+      (func [first second](+ first second)))
+    ([[1 2][3 4]]))
+
+=> [call (func [first second](+ first second))[1 2]
+   call (func [first second](+ first second))[3 4]]
+
+=> [(func [first second](+ first second) 1 2)
+   (func [first second](+ first second) 3 4)]
+
+```
+
+Call can also be used to convert a symbol into a function call.
+
+Example:
+```
+(def foo (namespace
+    { bar
+        (func [x y](+ x y))}))
+
+(call (using foo bar)[1 2])
+
+=> (call (foo.bar) [1 2])
+=> (foo.bar 1 2)
+```
 ### chain?
 
 Create a call chain. *I'm not sure if this is useful enough to require, or if the syntax is correct.*
@@ -153,7 +207,7 @@ Example:
 ```
 (def sum (func [newval previous] (+ newval previous)))
 (reduce sum [1 2 3])
-=> (sum 1 (sum 2 (sum 3 nil)))
+=> (sum 1 (sum 2 3))
 ```
 
 sum is called repeatedly with the first argument applied to the list,
@@ -177,12 +231,12 @@ A package may reside in a pre-compiled package, a pre-compiled database, or in s
 ### apply?
 *(I don't like this name)*
 
-Augment a list of function calls with another argument.
+Augment a list of function calls with additional arguments.
 
 Example:
 
 ```
-(apply (map add 1 2 3) 1)
+(apply (map add [1 2 3]) 1)
 => (apply [(add 1) (add 2) (add 3)] 1)
 => [(add 1 1) (add 2 1) (add 3 1)]
 ```
@@ -193,7 +247,7 @@ Should the last argument of apply optionally be a list?
 
 ```
 (apply (map add 1 2 3) [4 5 6])
-=> [(add 1 4) (add 2 5) (add 3 6)]
+=> [(add 1 4 5 6) (add 2 4 5 6) (add 4 5 6)]
 ```
 
 or the same thing except without the list, and using a variable list of args?
@@ -202,15 +256,106 @@ or the same thing except without the list, and using a variable list of args?
 (apply (map add 1 2 3) 4 5 6)
 ```
 
-At which point I'm wondering what's the difference between map and apply?  Couldn't that be the same with:
+### deref
+Dereference a symbol.
+
+Example:
 
 ```
-(apply (apply (add) [1 2 3] [4 5 6]))
+(def foo (func [x y] (+ x y)))
+(def sym foo)
+
+(call sym [1 2])
+=> (sym 1 2)
+
+(call (deref sym) [1 2])
+=> (call foo [1 2])
+(foo 1 2)
 ```
-or does that need to be this?
+
+~~*Possibly this is not necessary; maybe deref should be the default behavior.*~~ *The notes in `namespace` explain why `deref` is necessary.*
+
+### namespace
+Construct a namespace using a dictionary
+
+Example:
+```
+(def foo (namespace
+    { bar
+        (func [x y](+ x y))}))
+```
+
+*This works because x dictionary and `namespace` dereferences it.*
 
 ```
-(apply (apply [(add) (add) (add)] [1 2 3]) [4 5 6])
+(def x
+  { bar (func [x y](+ x y))})
+
+(def foo (namespace x))
+
+(foo.bar)
 ```
 
-Notice the minor difference, where in this case "add" is now "(add)" which results in a function call without any arguments; the inner "apply" adds the first arguments `[1 2 3]` and the second map adds the second arguments `[4 5 6]`.
+*This on the other hand does not work because bar is a symbol within the dictionary, not in the global namespace.:*
+
+```
+(def foo (namespace (deref x)))
+```
+
+*And what about this?  This actually does work.*
+
+```
+(def foo (def bar (func [x y](+ x y))))
+(foo.bar 1 2)   ; This works as expected
+
+(def x foo)
+(x.foo.bar 1 2) ; This also works
+
+(def y (deref foo))
+(y.bar 1 2)     ; This works
+(y.foo.bar 1 2) ; This does not work
+```
+
+~~*I don't like needing to use deref; it seems redundant, but if the rule is changed so we don't need to use deref like this:*~~
+
+~~*Any symbol that is defined will be dereferenced automatically, but if the symbol hasn't been defined then the name of the symbol is used.*~~
+
+*Incorrect:*
+
+```
+; what is bar?  Is it a namespace?  Is it a function?
+; In this case I don't think it matters because foo.bar references the correct thing.
+(def foo bar)
+
+; But what about this?  What is x.bar?
+; I think this works, too... x.bar is the same as foo.bar.  
+; x.foo don't exist.
+(def x foo)
+```
+
+*This causes an inconsistent behavior between `(def foo bar)(foo.bar)` vs `(def x foo)(x.foo)` where the former is valid and the latter is invalid.  If we change the rule to this:*
+
+*Any symbol used to define another symbol will not be dereferenced automatically, and if the symbol needs to be dereferenced then use `(deref sym)`.*
+
+*Then that solves the problem, so the answer is that we should not automatically dereference anything, and the author must explicitly dereference symbols if that is what is desired.*
+
+### getname / getfqname
+Get the name of a symbol and return it as a string.  `getname` gets the name of the element, while `getfqname` also includes the namespaces within which the symbol resides.
+
+Example:
+```
+(def bar (func [x y](+ x y)))
+(def foo bar)
+
+(getname foo)
+=> "foo"
+
+(getname (deref foo))
+=> "bar"
+
+(getname foo.bar)
+=> "bar"
+
+(getfqname foo.bar)
+=> "foo.bar"
+```
