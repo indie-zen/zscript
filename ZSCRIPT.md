@@ -153,13 +153,19 @@ Example:
 ```
 
 ### call
-Call a function once with a list of arguments.  This helps to convert a list into a list of arguments.
+Call a function once with a list of arguments.  This helps to convert a list into a list of arguments (although this isn't necessary if you can use positional destructuring while defining the function).
 
 Example:
 ```
 (map
   (call
     (func [first second](+ first second)))
+  (pairs [1 2 3 4]))
+
+;;; The previous is equivalent to this, but requires a different signature
+;;; on the function and doesn't require the (call).
+(map
+  (func [[first second]](+ first second))
   (pairs [1 2 3 4]))
 
 => (map

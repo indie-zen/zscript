@@ -72,8 +72,7 @@ class FunctionService {
   createFunctionCall(name, ...args) {
     // TODO Need to track this?  Probably, to eventually determine
     // if all calls evaluate to a function that exists.
-    const nameString = Symbol.keyFor(name);
-    return new FunctionCall(nameString, ...args);
+    return new FunctionCall(name, ...args);
   }
 }
 
@@ -95,8 +94,14 @@ export function compileScript(ast, env) {
     switch(a0sym) {
       // Define a variable
       case 'def':
-        env[a1] = compileScript(a2, env);
-        console.log(`def ${Symbol.keyFor(a1)} as ${env[a1]}`);
+        var def = compileScript(a2, env);
+        env[a1] = def;
+        console.log(`def ${Symbol.keyFor(a1)}`);
+        if (types.getType(def) === 'symbol') {
+            console.log(Symbol.keyFor(def));
+        } else {
+          console.log(def);
+        }
         return a1;
       // Define a new function
       case 'func':
@@ -113,6 +118,11 @@ export function compileScript(ast, env) {
         var loadEnv = newEnv();
         loadFile(fileName, loadEnv);
         setEnv(env, a1, loadEnv);
+        return null;
+      case 'eval':
+        var funcCall = compileScript(a1);
+        console.log('Evaluating');
+        console.log(funcCall);
         return null;
       default:
         const args = Array.from(ast.slice(1),
@@ -133,6 +143,29 @@ export function loadFile(fileName, env) {
   }
 }
 
+// Evaluate:
+//
+
+export function evalCompiledScript(script, env) {
+  console.log('In evalCompiledScript');
+  console.log(script);
+  console.log(env);
+  console.log(types.getType(script));
+  switch(types.getType(script)) {
+    case 'array':
+      const [sym, ...args] = script;
+      /// WTF why isn't this already a function call?
+      var funcCall = functionService.createFunctionCall(sym, ...args);
+      return funcCall.eval(env);
+    case 'vector':
+      var results = Array.from(script, evalCompiledScript, env);
+      results.__isvector__ = true;
+      return results;
+    default:
+      return script;
+  }
+}
+
 // Functions:
 //
 // FunctionDefinition
@@ -143,14 +176,82 @@ export class FunctionDefinition {
     this.args = args;
     this.body = body;
   }
+
+  eval(env, args) {
+    console.log('Evaluating function definition');
+    // For now assume a function definition is nothing more than a function call
+    console.log(this.args);
+    console.log(args);
+    
+    var funcEnv = newEnv(env, this.args, args);
+
+    return this.body.eval(funcEnv);
+  }
 }
 
 export class FunctionCall {
   constructor(name, ...args) {
     this.name = name;
     this.args = args;
-    console.log(`Call to function ${name} with args:`);
+    console.log(`Call to function ${Symbol.keyFor(name)} with args:`);
     console.log(args);
+  }
+
+  eval(env) {
+    console.log(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
+    var func = getEnv(env, this.name)
+    console.log(func);
+    this.env = env;
+    var args = Array.from(this.args, this.evalCompiledScript, this);
+    console.log(args);
+    switch(types.getType(func)) {
+      case 'function':
+        console.log('Calling function');
+        var results = func(...args);
+        console.log('Results');
+        console.log(results);
+        return results;
+      case 'object':
+        // Assume it's a function call.
+        //console.log(func.getType());
+        return func.eval(env, args);
+      default:
+        console.log("Calling function of type");
+        console.log(types.getType(func));
+    }
+    //func.call(env, ...args);
+  }
+
+  evalCompiledScript(script) {
+    //console.log('in FunctionCall.evalCompiledScript');
+    //console.log(script);
+    //console.log(this.env);
+    //console.log(types.getType(script));
+    switch(types.getType(script)) {
+      case 'array':
+        // An array is a function call where the first value in the array
+        // is the symbol of the function to be called, and the rest of
+        // the array is a list of arguments.  This SHOULD already have
+        // been compiled, but it wasn't!
+        // FIXME This SHOULD have already been compiled during the compile
+        // step; why wasn't it?
+        console.log('Creating and then calling function');
+        const [sym, ...args] = script;
+        var funcCall = functionService.createFunctionCall(sym, ...args);
+        var results = funcCall.eval(this.env);
+        console.log('Results from call:');
+        console.log(results);
+        return results;
+      case 'vector':
+        var results = Array.from(script, this.evalCompiledScript, this);
+        results.__isvector__ = true;
+        return results;
+      case 'symbol':
+        var value = getEnv(this.env, script);
+        return this.evalCompiledScript(value);
+      default:
+        return script;
+    }
   }
 }
 

@@ -1,13 +1,15 @@
-; Simple inline
-(+ x y)
-
 ; Global sum function
-(def sum [x y] (+ x y))
-(sum 1 2)
+(def sum
+  (func [x y]
+    (+ x y)))
 
-;(def test [text] (def name [] (text)))
 
-;(test 'test')
+; Positional destructuring
+(def sum_of_list_of_two
+  (func
+    [[a b]](+ a b)))
 
-; Nested calls
-(sum (sum 3 4) 5)
+
+(def tests (pairs [
+    (sum 1 2) 3
+    (sum_of_list_of_two [1 2]) 3]))

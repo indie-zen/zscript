@@ -26,11 +26,35 @@ export function find_package(packageName) {
   return packageName;
 }
 
+function map_function(args) {
+  console.log('In funcion map_function');
+  console.log(args);
+}
+
+function pairs(args) {
+  console.log('In function pairs');
+  console.log(args);
+  var results = [];
+  args.forEach( (item, index) => {
+    console.log(item);
+    console.log(args[index]);
+    if (index % 2 === 0) {
+      results.push([args[index], args[index + 1]]);
+      console.log(results);
+    }
+  });
+  console.log('Results');
+  console.log(results);
+  return results;
+}
+
 // core_ns is namespace of type functions
 export const namespace = new Map([
   ['+', (a, b) => a+b],
 
   ['str', (...a) => a.map(e => pr_str(e,0)).join('')],
   ['slurp', slurp],
-  ['find_package', find_package]
+  ['find_package', find_package],
+  ['map', map_function],
+  ['pairs', pairs],
 ]);

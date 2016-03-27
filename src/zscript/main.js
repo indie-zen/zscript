@@ -12,6 +12,11 @@ if (process.argv.length > 2) {
   var fileName = process.argv[2];
   console.log(`Loading file ${fileName}`);
   zs.compiler.loadFile(fileName, zs.compiler.globalEnv);
+
+  if (process.argv.length > 3) {
+    var jsfileName = process.argv[3];
+    require(jsfileName);
+  }
 } else {
   while (true) {
     var line = readline("zscript:> ");

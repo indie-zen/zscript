@@ -1,3 +1,5 @@
+const types = require('./types.js');
+
 class Environment {
   toString() {
     var symbols = Object.getOwnPropertySymbols(this);
@@ -14,7 +16,20 @@ export function newEnv(outer=new Environment(), binds=[], exprs=[]) {
     var e = Object.setPrototypeOf(new Environment(), outer)
     // Bind symbols in binds to values in exprs
     for (var i=0; i<binds.length; i++) {
-        if (Symbol.keyFor(binds[i]) === "&") {
+        if (types.getType(binds[i]) === "vector") {
+          if (types.getType(exprs[i]) === "vector") {
+            // func [[x y]](...) [1 2]
+            // Positional destructuring
+            for (var p = 0; p < binds[i].length; p++) {
+              e[binds[i][p]] = exprs[i][p];
+            }
+          }
+          else {
+            // func [[x y]](...) 1 2
+            // Error, we don't support this yet.
+            throw Error('Positional destructuring is only supported when the right side is a list.');
+          }
+        } else if (Symbol.keyFor(binds[i]) === "&") {
             e[binds[i+1]] = exprs.slice(i) // variable length arguments
             break
         } else {
