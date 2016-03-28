@@ -5,50 +5,6 @@ const reader = require('./reader.js');
 
 import { newEnv, setEnv, getEnv } from './env.js';
 
-export function read(str) {
-  return readString(str);
-}
-
-function evalAST(ast, env) {
-  switch(types.getType(ast)) {
-    case 'array':
-      var res = ast.map( function(x) {
-        return evalScript(x, env);
-      });
-      return res;
-    case 'symbol':
-      var f = getEnv(env, ast);
-      return f;
-    default:
-      return ast;
-  }
-}
-
-function evalScript(ast, env) {
-  while(true) {
-    if (types.getType(ast) != 'array') {
-      return evalAST(ast, env);
-    }
-
-    const [a0, a1, a2, ...an ] = ast;
-    const a0sym = types.getType(a0) === 'symbol' ?
-      Symbol.keyFor(a0) : Symbol(':default');
-    //console.log(`Getting symbol ${a0sym}`);
-    switch(a0sym) {
-      default:
-        let [f, ...args] = evalAST(ast, env);
-        if (types.getType(f) == 'function') {
-          return f(...args);
-        } else if (f.ast) {
-          env = newEnv(f.env, f.params, args);
-          ast = f.ast;
-          break; // Continue evalScript loop
-        }
-        throw new Error(`Error evaluating ${a0sym}`);
-    }
-  }
-}
-
 function compileAST(ast, env) {
   const astType = types.getType(ast);
   switch(astType) {
@@ -143,29 +99,6 @@ export function loadFile(fileName, env) {
   }
 }
 
-// Evaluate:
-//
-
-export function evalCompiledScript(script, env) {
-  console.log('In evalCompiledScript');
-  console.log(script);
-  console.log(env);
-  console.log(types.getType(script));
-  switch(types.getType(script)) {
-    case 'array':
-      const [sym, ...args] = script;
-      /// WTF why isn't this already a function call?
-      var funcCall = functionService.createFunctionCall(sym, ...args);
-      return funcCall.eval(env);
-    case 'vector':
-      var results = Array.from(script, evalCompiledScript, env);
-      results.__isvector__ = true;
-      return results;
-    default:
-      return script;
-  }
-}
-
 // Functions:
 //
 // FunctionDefinition
@@ -179,10 +112,11 @@ export class FunctionDefinition {
 
   eval(env, args) {
     console.log('Evaluating function definition');
+
     // For now assume a function definition is nothing more than a function call
     console.log(this.args);
     console.log(args);
-    
+
     var funcEnv = newEnv(env, this.args, args);
 
     return this.body.eval(funcEnv);
@@ -218,6 +152,7 @@ export class FunctionCall {
       default:
         console.log("Calling function of type");
         console.log(types.getType(func));
+        throw new Error(`Function type is not supported: ${types.getType(func)}`);
     }
     //func.call(env, ...args);
   }
@@ -262,9 +197,4 @@ export var globalEnv = newEnv();
 
 for (let [k, v] of core.namespace) {
   setEnv(globalEnv, types._symbol(k), v);
-}
-
-// Read evaluate print
-export function rep(str) {
-  return objToString(evalScript(read(str), globalEnv));
 }
