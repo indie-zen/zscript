@@ -83,7 +83,9 @@ export function compileScript(ast, env) {
       default:
         const args = Array.from(ast.slice(1),
             value => compileScript(value, env))
-        // TODO compileScript for each of the args
+        // FIXME compileScript for each of the args
+        // I think since the rest of the args aren't compiled then they
+        // have to be compiled in evalCompiledScript for arrays.
         return functionService.createFunctionCall(a0, ...args);
     }
   }
@@ -124,16 +126,25 @@ export class FunctionDefinition {
 }
 
 export class FunctionCall {
-  constructor(name, ...args) {
-    this.name = name;
+  constructor(nameOrDef, ...args) {
+    if(types.getType(nameOrDef) === 'symbol') {
+      this.definition = null;
+      this.name = nameOrDef;
+      console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
+    }
+    else {
+      this.name = types._symbol('<lambda>');
+      console.log('Call to lambda function');
+      console.log(nameOrDef);
+      this.definition = nameOrDef;
+    }
     this.args = args;
-    console.log(`Call to function ${Symbol.keyFor(name)} with args:`);
     console.log(args);
   }
 
   eval(env) {
     console.log(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
-    var func = getEnv(env, this.name)
+    var func = this.definition ? this.definition : getEnv(env, this.name);
     console.log(func);
     this.env = env;
     var args = Array.from(this.args, this.evalCompiledScript, this);
@@ -141,7 +152,7 @@ export class FunctionCall {
     switch(types.getType(func)) {
       case 'function':
         console.log('Calling function');
-        var results = func(...args);
+        var results = func(...args, env);
         console.log('Results');
         console.log(results);
         return results;
@@ -169,7 +180,8 @@ export class FunctionCall {
         // the array is a list of arguments.  This SHOULD already have
         // been compiled, but it wasn't!
         // FIXME This SHOULD have already been compiled during the compile
-        // step; why wasn't it?
+        // step; why wasn't it? (see compileScript default behavior; I think
+        // that's why this isn't compiled yet)
         console.log('Creating and then calling function');
         const [sym, ...args] = script;
         var funcCall = functionService.createFunctionCall(sym, ...args);
@@ -195,6 +207,34 @@ export class FunctionCall {
 //
 export var globalEnv = newEnv();
 
+// Core namespace (defined in core.js)
 for (let [k, v] of core.namespace) {
+  setEnv(globalEnv, types._symbol(k), v);
+}
+
+// Compiler namespace functions are defined here
+
+function map_function(func, list, env) {
+  console.log('In funcion map_function');
+  console.log(func);
+  console.log(list);
+
+  // FIXME Don't assume that the list is a list of symbols;
+  // I think the list may include some elements that are function
+  // calls and/or function definitions (definitely the latter).
+  // For now, assume the list is a list of symbols.
+  var newFuncCalls = Array.from(list, arg => {
+    return functionService.createFunctionCall(func, arg).eval(env);
+  })
+  console.log(newFuncCalls);
+  return newFuncCalls;
+}
+
+// compiler_namespace is added to the global environment
+const compiler_namespace = new Map([
+  ['map', map_function]
+]);
+
+for (let [k, v] of compiler_namespace) {
   setEnv(globalEnv, types._symbol(k), v);
 }
