@@ -44,7 +44,7 @@ export function compileScript(ast, env) {
       return;
     }
 
-    const [a0, a1, a2, ...an] = ast;
+    var [a0, a1, a2, ...an] = ast;
     const a0type = types.getType(a0);
     const a0sym = a0type === 'symbol' ? Symbol.keyFor(a0) : Symbol(':default');
     switch(a0sym) {
@@ -61,6 +61,9 @@ export function compileScript(ast, env) {
         return a1;
       // Define a new function
       case 'func':
+        console.log("Creating a new function");
+        console.log(a1);
+        console.log(a2);
         const body = compileScript(a2, env);
         var newFunc = functionService.createFunction(a1, body);
         console.log(newFunc);
@@ -80,7 +83,35 @@ export function compileScript(ast, env) {
         console.log('Evaluating');
         console.log(funcCall);
         return null;
+      case 'using':
+        console.log("Using!!!!!!")
+        if(types.getType(a2) === "symbol") {
+          return types._symbol(Symbol.keyFor(a1) + "." + Symbol.keyFor(a2));
+        }
+        // TODO Implement a2 as a list.
+        throw new Error("Error using when a2 is not a single symbol.  (Is it a list?)")
+      case 'namespace':
+        console.log("Creating namespace");
+        // Iterate through the symbols in a1 and compile the values
+        var symbols = Object.getOwnPropertySymbols(a1);
+        symbols.forEach(sym => {
+          var newValue = compileScript(a1[sym], env);
+          console.log("Setting namespace value")
+          console.log(sym);
+          console.log(a1[sym]);
+          console.log(newValue);
+          a1[sym] = newValue;
+          console.log('-----')
+        })
+        return a1;
       default:
+        if(types.getType(a0) === "array") {
+          var newA0 = compileScript(a0, env);
+          console.log("New a0");
+          console.log(newA0);
+          a0 = newA0;
+        }
+        console.log("Default compileScript handler");
         const args = Array.from(ast.slice(1),
             value => compileScript(value, env))
         // FIXME compileScript for each of the args

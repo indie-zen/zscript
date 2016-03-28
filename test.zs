@@ -43,6 +43,16 @@
           ;(func [](3)))))
           (func [](+ 1 2)))))
 
+;;; "using" and "namespace" tests
+(def my_namespace
+  (namespace {
+    myFunc
+      (func [x y](+ x y))
+  }))
+
+(def using_test1
+  (func [x y]((using my_namespace myFunc) x y)))
+
 (def tests (pairs [
     ; Simple call to global function
     (sum 1 2) 3
@@ -64,4 +74,7 @@
 
     ; Maps with a lambda function doesn't work yet
     ;(double_list [1 2]) [2 4]
+
+    ; Simple using test, using a namespace defined with a map
+    (using_test1 1 2) 3
     ]))
