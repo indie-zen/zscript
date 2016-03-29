@@ -61,17 +61,17 @@ export function compileScript(ast, env) {
         return a1;
       // Define a new function
       case 'func':
-        console.log("Creating a new function");
-        console.log(a1);
-        console.log(a2);
+        // console.log("Creating a new function");
+        // console.log(a1);
+        // console.log(a2);
         const body = compileScript(a2, env);
         var newFunc = functionService.createFunction(a1, body);
-        console.log(newFunc);
+        // console.log(newFunc);
         return newFunc;
       case 'require':
-        console.log('Loading file');
-        console.log(a2);
-        console.log(an);
+        // console.log('Loading file');
+        // console.log(a2);
+        // console.log(an);
         // Find the name of the file (or eventually other package source)
         var fileName = core.find_package(a2);
         var loadEnv = newEnv();
@@ -84,7 +84,6 @@ export function compileScript(ast, env) {
         console.log(funcCall);
         return null;
       case 'using':
-        console.log("Using!!!!!!")
         if(types.getType(a2) === "symbol") {
           return types._symbol(Symbol.keyFor(a1) + "." + Symbol.keyFor(a2));
         }
@@ -111,7 +110,7 @@ export function compileScript(ast, env) {
           console.log(newA0);
           a0 = newA0;
         }
-        console.log("Default compileScript handler");
+        // console.log("Default compileScript handler");
         const args = Array.from(ast.slice(1),
             value => compileScript(value, env))
         // FIXME compileScript for each of the args
@@ -161,16 +160,16 @@ export class FunctionCall {
     if(types.getType(nameOrDef) === 'symbol') {
       this.definition = null;
       this.name = nameOrDef;
-      console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
+      // console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
     }
     else {
       this.name = types._symbol('<lambda>');
-      console.log('Call to lambda function');
-      console.log(nameOrDef);
+      // console.log('Call to lambda function');
+      // console.log(nameOrDef);
       this.definition = nameOrDef;
     }
     this.args = args;
-    console.log(args);
+    // console.log(args);
   }
 
   eval(env) {
@@ -179,10 +178,14 @@ export class FunctionCall {
     console.log(func);
     this.env = env;
     var args = Array.from(this.args, this.evalCompiledScript, this);
+    console.log('The original args are');
+    console.log(this.args);
+    console.log('The evaluated args are')
     console.log(args);
     switch(types.getType(func)) {
       case 'function':
         console.log('Calling function');
+        console.log(func);
         var results = func(...args, env);
         console.log('Results');
         console.log(results);
@@ -200,8 +203,8 @@ export class FunctionCall {
   }
 
   evalCompiledScript(script) {
-    //console.log('in FunctionCall.evalCompiledScript');
-    //console.log(script);
+    console.log('in FunctionCall.evalCompiledScript');
+    console.log(script);
     //console.log(this.env);
     //console.log(types.getType(script));
     switch(types.getType(script)) {
@@ -225,8 +228,17 @@ export class FunctionCall {
         results.__isvector__ = true;
         return results;
       case 'symbol':
+        console.log('Getting symbol');
+        console.log(script);
         var value = getEnv(this.env, script);
-        return this.evalCompiledScript(value);
+        console.log(value);
+        var evaled = this.evalCompiledScript(value);
+        console.log(evaled);
+        return evaled;
+      case 'function':
+        throw new Error("evalCompiledScript: function; how did we get here?");
+      case 'object':
+        return script.eval(this.env);
       default:
         return script;
     }

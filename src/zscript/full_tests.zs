@@ -91,8 +91,8 @@
     ; Call to a positional destructuring function
     (sum_of_list_of_two [1 2]) 3
 
-    ; Simple map to a function (oops, this is broken now)
-    ;(inc_list [1 7]) [2 8]
+    ; Simple map to a function
+    (inc_list [1 7]) [2 8]
 
     ; Simple lambda function within another function
     (lambda2) 2
