@@ -8,26 +8,8 @@ function assert(condition, message="Assertion failed") {
   }
 }
 
-var env1 = zs.env.newEnv();
-console.log('New environment:');
-console.log(env1);
-var test = zs.types._symbol("test");
-
-zs.env.setEnv(env1, test, "value");
-console.log(env1);
-
-assert(zs.env.getEnv(env1, test) === "value", "environment get/set failure");
-
-console.log(zs.env.getEnv(env1, test));
-
-console.log(Array.from(env1, (v, k) => [Symbol.keyFor(k), v]));
-console.log(env1.getOwnPropertySymbols);
-
 var testsStruct = zs.env.getEnv(zs.compiler.globalEnv, zs.types._symbol('tests'))
 console.log("Running tests: ");
-console.log(testsStruct);
-
-console.log(zs.compiler.globalEnv);
 var tests = testsStruct.eval(zs.compiler.globalEnv);
 console.log("Got results from evaluating the tests");
 console.log(tests);

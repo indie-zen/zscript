@@ -38,10 +38,8 @@ function pairs(args) {
 
 // core_ns is namespace of type functions
 export const namespace = new Map([
-  ['+', (a, b) => {
-    console.log(`Adding ${a} and ${b}`);
-    return a+b; }],
-  ['*', (a, b) => a*b],
+  ['+', (a, b) => a + b],
+  ['*', (a, b) => a * b],
 
   ['str', (...a) => a.map(e => pr_str(e,0)).join('')],
   ['slurp', slurp],

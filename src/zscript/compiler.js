@@ -30,6 +30,10 @@ class FunctionService {
     // if all calls evaluate to a function that exists.
     return new FunctionCall(name, ...args);
   }
+
+  createMap(symbol, list) {
+    return new MapHandler(symbol, list);
+  }
 }
 
 export var functionService = new FunctionService();
@@ -103,6 +107,11 @@ export function compileScript(ast, env) {
           console.log('-----')
         })
         return a1;
+      case 'map':
+        console.log('creating map');
+        console.log(a1);
+        console.log(a2);
+        return functionService.createMap(a1, a2);
       default:
         if(types.getType(a0) === "array") {
           var newA0 = compileScript(a0, env);
@@ -155,51 +164,13 @@ export class FunctionDefinition {
   }
 }
 
-export class FunctionCall {
-  constructor(nameOrDef, ...args) {
-    if(types.getType(nameOrDef) === 'symbol') {
-      this.definition = null;
-      this.name = nameOrDef;
-      // console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
-    }
-    else {
-      this.name = types._symbol('<lambda>');
-      // console.log('Call to lambda function');
-      // console.log(nameOrDef);
-      this.definition = nameOrDef;
-    }
-    this.args = args;
-    // console.log(args);
+class ScriptEvaluator {
+  constructor(env) {
+    this.env = env;
   }
 
-  eval(env) {
-    console.log(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
-    var func = this.definition ? this.definition : getEnv(env, this.name);
-    console.log(func);
-    this.env = env;
-    var args = Array.from(this.args, this.evalCompiledScript, this);
-    console.log('The original args are');
-    console.log(this.args);
-    console.log('The evaluated args are')
-    console.log(args);
-    switch(types.getType(func)) {
-      case 'function':
-        console.log('Calling function');
-        console.log(func);
-        var results = func(...args, env);
-        console.log('Results');
-        console.log(results);
-        return results;
-      case 'object':
-        // Assume it's a function call.
-        //console.log(func.getType());
-        return func.eval(env, args);
-      default:
-        console.log("Calling function of type");
-        console.log(types.getType(func));
-        throw new Error(`Function type is not supported: ${types.getType(func)}`);
-    }
-    //func.call(env, ...args);
+  evalArray(array) {
+    return Array.from(array, this.evalCompiledScript, this);
   }
 
   evalCompiledScript(script) {
@@ -242,6 +213,76 @@ export class FunctionCall {
       default:
         return script;
     }
+  }
+}
+
+export class FunctionCall {
+  constructor(nameOrDef, ...args) {
+    if(types.getType(nameOrDef) === 'symbol') {
+      this.definition = null;
+      this.name = nameOrDef;
+      // console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
+    }
+    else {
+      this.name = types._symbol('<lambda>');
+      // console.log('Call to lambda function');
+      // console.log(nameOrDef);
+      this.definition = nameOrDef;
+    }
+    this.args = args;
+    // console.log(args);
+  }
+
+  eval(env) {
+    console.log(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
+    var func = this.definition ? this.definition : getEnv(env, this.name);
+    console.log(func);
+    var evaluator = new ScriptEvaluator(env);
+    var args = evaluator.evalArray(this.args);
+    console.log('The original args are');
+    console.log(this.args);
+    console.log('The evaluated args are')
+    console.log(args);
+    switch(types.getType(func)) {
+      case 'function':
+        console.log('Calling function');
+        console.log(func);
+        var results = func(...args, env);
+        // console.log('Results');
+        // console.log(results);
+        return results;
+      case 'object':
+        // Assume it's a function call.
+        //console.log(func.getType());
+        return func.eval(env, args);
+      default:
+        console.log("Calling function of type");
+        console.log(types.getType(func));
+        throw new Error(`Function type is not supported: ${types.getType(func)}`);
+    }
+    //func.call(env, ...args);
+  }
+
+}
+
+class MapHandler {
+  constructor(symbol, listOfValues) {
+    this.symbol = symbol;
+    this.listOfValues = listOfValues;
+  }
+
+  eval(env) {
+    // Return a list of function calls
+    var evaluator = new ScriptEvaluator(env);
+    const listOfValues = evaluator.evalCompiledScript(this.listOfValues);
+    var results = Array.from(listOfValues, value =>
+      functionService.createFunctionCall(this.symbol, value).eval(env));
+    console.log('MapHandler::eval');
+    console.log(this.symbol);
+    console.log(this.listOfValues);
+    console.log(listOfValues);
+    console.log(results);
+    return results;
   }
 }
 
