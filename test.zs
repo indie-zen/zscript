@@ -81,6 +81,13 @@
   (func [x]
     (struct_handler.add200 (struct_handler.add100 x))))
 
+;;; External files test
+(require requiretest "./requiretest.zs");
+
+(def testsum
+  (func [x y]
+    (+ 1 (+ x y))))
+
 (def tests (pairs [
     ; Simple call to global function
     (sum 1 2) 3
@@ -117,5 +124,12 @@
 
     ; Global function that calls two fqn functions
     (add300b 2) 302
+
+    ; Imported from external file
+    (requiretest.testsum 7 13) 20
+
+    ; Make sure the externally imported func didn't
+    ; overwrite the one in this file.
+    (testsum 7 13) 21
 
     ]))

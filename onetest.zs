@@ -1,17 +1,10 @@
-;;; Global function with one arg
-(def inc
-  (func
-    [value]
-      (+ value 1)))
+(require requiretest "./requiretest.zs");
 
-;;; Map with a regular function
-(def inc_list
-  (func
-    [listOfValues]
-      (map inc listOfValues) ))
+(def testsum
+  (func [x y]
+    (+ 1 (+ x y))))
 
 (def tests (pairs [
-    ; Simple map to a function (oops, this is broken now)
-    (inc_list [1 7]) [2 8]
-
+  (requiretest.testsum 7 13) 20
+  (testsum 7 13) 21
     ]))

@@ -262,7 +262,6 @@ export class FunctionCall {
     }
     //func.call(env, ...args);
   }
-
 }
 
 class MapHandler {
