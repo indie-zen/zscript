@@ -46,7 +46,7 @@
     []
       (func [] (+ 1 1))))
 
-;;; Simple lambda function returning a constant
+;;; Nested 3x lambda function returning a constant
 (def lambda3
   (func
     []
@@ -87,6 +87,10 @@
 (def testsum
   (func [x y]
     (+ 1 (+ x y))))
+
+(def subfunc
+  (func [x y]
+    (+ 100 (testsum x y))))
 
 (def tests (pairs [
     ; Simple call to global function
@@ -131,5 +135,12 @@
     ; Make sure the externally imported func didn't
     ; overwrite the one in this file.
     (testsum 7 13) 21
+
+    ; Make sure imported funcs use the symbols defined in
+    ; the external file.
+    (requiretest.subfunc 7 13) 20
+
+    ; Make sure global funcs don't use the imported symbols
+    (subfunc 7 13) 121
 
     ]))

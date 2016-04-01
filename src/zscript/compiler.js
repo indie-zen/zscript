@@ -25,10 +25,10 @@ class FunctionService {
     return newFunc;
   }
 
-  createFunctionCall(name, ...args) {
+  createFunctionCall(env, name, ...args) {
     // TODO Need to track this?  Probably, to eventually determine
     // if all calls evaluate to a function that exists.
-    return new FunctionCall(name, ...args);
+    return new FunctionCall(env, name, ...args);
   }
 
   createMap(symbol, list) {
@@ -79,6 +79,7 @@ export function compileScript(ast, env) {
         // Find the name of the file (or eventually other package source)
         var fileName = core.find_package(a2);
         var loadEnv = newEnv();
+        add_globals(loadEnv);
         loadFile(fileName, loadEnv);
         setEnv(env, a1, loadEnv);
         return null;
@@ -125,7 +126,7 @@ export function compileScript(ast, env) {
         // FIXME compileScript for each of the args
         // I think since the rest of the args aren't compiled then they
         // have to be compiled in evalCompiledScript for arrays.
-        return functionService.createFunctionCall(a0, ...args);
+        return functionService.createFunctionCall(env, a0, ...args);
     }
   }
 }
@@ -189,7 +190,7 @@ class ScriptEvaluator {
         // that's why this isn't compiled yet)
         console.log('Creating and then calling function');
         const [sym, ...args] = script;
-        var funcCall = functionService.createFunctionCall(sym, ...args);
+        var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
         var results = funcCall.eval(this.env);
         console.log('Results from call:');
         console.log(results);
@@ -217,10 +218,13 @@ class ScriptEvaluator {
 }
 
 export class FunctionCall {
-  constructor(nameOrDef, ...args) {
+  constructor(env, nameOrDef, ...args) {
     if(types.getType(nameOrDef) === 'symbol') {
       this.definition = null;
       this.name = nameOrDef;
+
+      // Environment created during the compile step
+      this.env = env;
       // console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
     }
     else {
@@ -235,9 +239,19 @@ export class FunctionCall {
 
   eval(env) {
     console.log(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
-    var func = this.definition ? this.definition : getEnv(env, this.name);
+
+    // Create an environment by merging the namespace environment
+    // with the argument environment.
+    var evalEnv = newEnv(this.env);
+    add_globals(evalEnv);
+    // Overlay with symbols from function call
+    for(var symbol of Object.getOwnPropertySymbols(env)) {
+      setEnv(evalEnv, symbol, getEnv(env, symbol));
+    }
+
+    var func = this.definition ? this.definition : getEnv(evalEnv, this.name);
     console.log(func);
-    var evaluator = new ScriptEvaluator(env);
+    var evaluator = new ScriptEvaluator(evalEnv);
     var args = evaluator.evalArray(this.args);
     console.log('The original args are');
     console.log(this.args);
@@ -247,20 +261,19 @@ export class FunctionCall {
       case 'function':
         console.log('Calling function');
         console.log(func);
-        var results = func(...args, env);
+        var results = func(...args, evalEnv);
         // console.log('Results');
         // console.log(results);
         return results;
       case 'object':
         // Assume it's a function call.
         //console.log(func.getType());
-        return func.eval(env, args);
+        return func.eval(evalEnv, args);
       default:
         console.log("Calling function of type");
         console.log(types.getType(func));
         throw new Error(`Function type is not supported: ${types.getType(func)}`);
     }
-    //func.call(env, ...args);
   }
 }
 
@@ -275,7 +288,7 @@ class MapHandler {
     var evaluator = new ScriptEvaluator(env);
     const listOfValues = evaluator.evalCompiledScript(this.listOfValues);
     var results = Array.from(listOfValues, value =>
-      functionService.createFunctionCall(this.symbol, value).eval(env));
+      functionService.createFunctionCall(env, this.symbol, value).eval(env));
     console.log('MapHandler::eval');
     console.log(this.symbol);
     console.log(this.listOfValues);
@@ -290,11 +303,6 @@ class MapHandler {
 //
 export var globalEnv = newEnv();
 
-// Core namespace (defined in core.js)
-for (let [k, v] of core.namespace) {
-  setEnv(globalEnv, types._symbol(k), v);
-}
-
 // Compiler namespace functions are defined here
 
 function map_function(func, list, env) {
@@ -307,7 +315,7 @@ function map_function(func, list, env) {
   // calls and/or function definitions (definitely the latter).
   // For now, assume the list is a list of symbols.
   var newFuncCalls = Array.from(list, arg => {
-    return functionService.createFunctionCall(func, arg).eval(env);
+    return functionService.createFunctionCall(env, func, arg).eval(env);
   })
   console.log(newFuncCalls);
   return newFuncCalls;
@@ -318,6 +326,16 @@ const compiler_namespace = new Map([
   ['map', map_function]
 ]);
 
-for (let [k, v] of compiler_namespace) {
-  setEnv(globalEnv, types._symbol(k), v);
+function add_globals(env) {
+  // Core namespace (defined in core.js)
+  for (let [k, v] of core.namespace) {
+    setEnv(env, types._symbol(k), v);
+  }
+
+  // Compiler namespace
+  for (let [k, v] of compiler_namespace) {
+    setEnv(env, types._symbol(k), v);
+  }
 }
+
+add_globals(globalEnv);
