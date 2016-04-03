@@ -1,20 +1,25 @@
-(require requiretest "./requiretest.zs");
+(def my_namespace
+  (namespace {
+    myFunc
+      (func [[x y]](+ x y))
 
-(def testsum
-  (func [x y]
-    (+ 1 (+ x y))))
+    cmd_mul
+      (func [[x y]](* x y))
 
-(def inc
-  (func [x]
-    (+ 1 x)))
+    cmd_add
+      (func [[x y]](+ x y))
+  }))
 
-(def testsum2
-  (func [x y]
-    (+ 1 (+ (inc x) (testsum x y)))))
+(def dispatch
+  (func [[cmd data]]
+    (call (using my_namespace (deref cmd)) data )))
+
+(def dispatch_all
+  (func [cmds]
+    (map dispatch (pairs cmds))))
 
 (def tests (pairs [
-  (requiretest.testsum 7 13) 20
-  (testsum 7 13) 21
-  (requiretest.subfunc 7 13) 20
-  (testsum2 7 13) 30
+  (dispatch_all [
+      cmd_mul [2 3]
+      cmd_add [4 5] ]) [6 9]
     ]))

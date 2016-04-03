@@ -3,6 +3,8 @@ const types = require('./types.js');
 
 const reader = require('./reader.js');
 
+require('console-group').install();
+
 import { newEnv, setEnv, getEnv } from './env.js';
 
 function compileAST(ast, env) {
@@ -33,6 +35,10 @@ class FunctionService {
 
   createMap(symbol, list) {
     return new MapHandler(symbol, list);
+  }
+
+  createDeferredSymbol(env, namespace, symbolFunc) {
+    return new DeferredSymbol(env, namespace, symbolFunc);
   }
 }
 
@@ -89,11 +95,24 @@ export function compileScript(ast, env) {
         console.log(funcCall);
         return null;
       case 'using':
-        if(types.getType(a2) === "symbol") {
-          return types._symbol(Symbol.keyFor(a1) + "." + Symbol.keyFor(a2));
+        console.log('Using:');
+        switch(types.getType(a2)) {
+          case 'symbol':
+            var newSymbol = types._symbol(Symbol.keyFor(a1) + "." + Symbol.keyFor(a2));
+            console.log(newSymbol);
+            return newSymbol;
+          case 'vector':
+            // TODO Implement a2 as a vector.
+            throw new Error("Not implemented 'using' when a2 is a vector");
+          default:
+            // In this case assuming resolution of the symbol is deferred because
+            // of a call to (deref symbol) where symbol is passed as an argument.
+            var compiledA2 = compileScript(a2, env);
+            var newSymbol = functionService.createDeferredSymbol(env, a1, compiledA2);
+            console.log(newSymbol);
+            return newSymbol;
         }
-        // TODO Implement a2 as a list.
-        throw new Error("Error using when a2 is not a single symbol.  (Is it a list?)")
+        return null;
       case 'namespace':
         console.log("Creating namespace");
         // Iterate through the symbols in a1 and compile the values
@@ -153,15 +172,19 @@ export class FunctionDefinition {
   }
 
   eval(env, args) {
-    console.log('Evaluating function definition');
+    console.group('Evaluating function definition');
 
     // For now assume a function definition is nothing more than a function call
+    console.log(this.body);
     console.log(this.args);
     console.log(args);
 
     var funcEnv = newEnv(env, this.args, args);
 
-    return this.body.eval(funcEnv);
+    var results = this.body.eval(funcEnv);
+    console.log(results);
+    console.groupEnd();
+    return results;
   }
 }
 
@@ -175,8 +198,10 @@ class ScriptEvaluator {
   }
 
   evalCompiledScript(script) {
-    console.log('in FunctionCall.evalCompiledScript');
+    console.group('in FunctionCall.evalCompiledScript');
     console.log(script);
+    var results = null;
+
     //console.log(this.env);
     //console.log(types.getType(script));
     switch(types.getType(script)) {
@@ -188,32 +213,42 @@ class ScriptEvaluator {
         // FIXME This SHOULD have already been compiled during the compile
         // step; why wasn't it? (see compileScript default behavior; I think
         // that's why this isn't compiled yet)
-        console.log('Creating and then calling function');
+        console.group('Creating and then calling function');
         const [sym, ...args] = script;
         var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
-        var results = funcCall.eval(this.env);
-        console.log('Results from call:');
-        console.log(results);
-        return results;
+        results = funcCall.eval(this.env);
+        console.groupEnd();
+        break;
       case 'vector':
-        var results = Array.from(script, this.evalCompiledScript, this);
+        results = Array.from(script, this.evalCompiledScript, this);
         results.__isvector__ = true;
-        return results;
+        break;
       case 'symbol':
-        console.log('Getting symbol');
+        console.group('Getting symbol');
         console.log(script);
-        var value = getEnv(this.env, script);
-        console.log(value);
-        var evaled = this.evalCompiledScript(value);
-        console.log(evaled);
-        return evaled;
+        var value = getEnv(this.env, script, true);
+        // If the symbol wasn't found, just return the symbol.
+        if (value === null) {
+          results = script;
+        } else {
+          console.log(value);
+          results = this.evalCompiledScript(value);
+        }
+        console.groupEnd();
+        break;
       case 'function':
         throw new Error("evalCompiledScript: function; how did we get here?");
       case 'object':
-        return script.eval(this.env);
+         results = script.eval(this.env);
+        break;
       default:
-        return script;
+        results = script;
+        break;
     }
+
+    console.log(results);
+    console.groupEnd();
+    return results;
   }
 }
 
@@ -238,7 +273,8 @@ export class FunctionCall {
   }
 
   eval(env) {
-    console.log(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
+    console.group(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
+    var results = null;
 
     // Create an environment by merging the namespace environment
     // with the argument environment.
@@ -261,19 +297,22 @@ export class FunctionCall {
       case 'function':
         console.log('Calling function');
         console.log(func);
-        var results = func(...args, evalEnv);
-        // console.log('Results');
-        // console.log(results);
-        return results;
+        results = func(...args, evalEnv);
+        break;
       case 'object':
         // Assume it's a function call.
         //console.log(func.getType());
-        return func.eval(evalEnv, args);
+        results = func.eval(evalEnv, args);
+        break;
       default:
         console.log("Calling function of type");
         console.log(types.getType(func));
         throw new Error(`Function type is not supported: ${types.getType(func)}`);
+        break;
     }
+    console.log(results);
+    console.groupEnd();
+    return results;
   }
 }
 
@@ -298,6 +337,28 @@ class MapHandler {
   }
 }
 
+class DeferredSymbol {
+  constructor(env, namespace, symbolFunc) {
+    this.env = env;
+    this.namespace = namespace;
+    this.symbolFunc = symbolFunc;
+  }
+
+  eval(env) {
+    console.group("Evaluating DeferredSymbol");
+    console.log(this.namespace);
+    console.log(this.symbolFunc);
+
+    // TODO Don't assume the symbolFunc is a deref
+    var deref = getEnv(env, this.symbolFunc.args[0])
+    console.log(deref);
+    var newSym = types._symbol(Symbol.keyFor(this.namespace) + "." + Symbol.keyFor(deref));
+    console.log(newSym);
+    console.groupEnd();
+    return newSym;
+  }
+}
+
 //
 // Environment
 //
@@ -306,7 +367,7 @@ export var globalEnv = newEnv();
 // Compiler namespace functions are defined here
 
 function map_function(func, list, env) {
-  console.log('In funcion map_function');
+  console.group('In funcion map_function');
   console.log(func);
   console.log(list);
 
@@ -318,12 +379,25 @@ function map_function(func, list, env) {
     return functionService.createFunctionCall(env, func, arg).eval(env);
   })
   console.log(newFuncCalls);
+  console.groupEnd();
   return newFuncCalls;
 }
 
+function call_function(symbol, args, env) {
+  console.group('call_function');
+  console.log(symbol);
+  console.log(args);
+  var evaluator = new ScriptEvaluator(env);
+  var results = evaluator.evalCompiledScript([symbol, args]);
+  console.log('Results from call_function');
+  console.log(results);
+  console.groupEnd();
+  return results;
+}
 // compiler_namespace is added to the global environment
 const compiler_namespace = new Map([
-  ['map', map_function]
+  ['map', map_function],
+  ['call', call_function]
 ]);
 
 function add_globals(env) {

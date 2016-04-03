@@ -21,6 +21,7 @@
     "require-dir": "^0.1.0",
     "vinyl-paths": "^1.0.0",
     "ffi": "^2.0.0",
-    "readline-history": "^1.2.0"
+    "readline-history": "^1.2.0",
+    "console-group": "^0.2.0"
   }
 }

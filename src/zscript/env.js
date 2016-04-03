@@ -39,7 +39,7 @@ export function newEnv(outer=new Environment(), binds=[], exprs=[]) {
     return e
 }
 
-export const getEnv = (env, sym) => {
+export const getEnv = (env, sym, ignoreNotFound=false) => {
     if (sym in env) {
         return env[sym]
     } else {
@@ -52,6 +52,9 @@ export const getEnv = (env, sym) => {
             if(types._symbol(symbols[x]) in value) {
               value = value[types._symbol(symbols[x])];
             } else {
+                if (ignoreNotFound) {
+                  return null;
+                }
                 console.log(value);
                 throw Error(`'${symbols[x]}' not found`);
             }
