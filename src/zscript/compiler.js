@@ -188,6 +188,39 @@ export class FunctionDefinition {
   }
 }
 
+class ScriptResolver {
+  constructor(env) {
+    this.env = env;
+  }
+
+  resolveArray(array) {
+    return Array.from(array, this.resolveCompiledScript, this);
+  }
+
+  resolveCompiledScript(script) {
+    console.group('in ScriptResolver.resolveCompiledScript');
+    console.log(types.getType(script));
+    console.log(script);
+    var results = script;
+    switch(types.getType(script)) {
+      case 'array':
+        // FIXME as with evalCompiledScript, this needs to be fixed
+        const [sym, ...args] = script;
+        var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
+        results = funcCall.resolve(this.env);
+        console.groupEnd();
+        break;
+      case 'vector':
+        var resolver = new ScriptResolver(this.env);
+        results = resolver.resolveArray(script);
+        results.__isvector__ = true;
+        break;
+    }
+    console.groupEnd();
+    return results;
+  }
+}
+
 class ScriptEvaluator {
   constructor(env) {
     this.env = env;
@@ -198,7 +231,7 @@ class ScriptEvaluator {
   }
 
   evalCompiledScript(script) {
-    console.group('in FunctionCall.evalCompiledScript');
+    console.group('in ScriptEvaluator.evalCompiledScript');
     console.log(script);
     var results = null;
 
@@ -270,6 +303,16 @@ export class FunctionCall {
     }
     this.args = args;
     // console.log(args);
+  }
+
+  resolve(env) {
+    console.group(`Resolving function call to ${Symbol.keyFor(this.name)}`);
+    console.log('The original args are');
+    console.log(this.args);
+    var resolver = new ScriptResolver(env);
+    this.args = resolver.resolveArray(this.args);
+    console.groupEnd();
+    return this;
   }
 
   eval(env) {

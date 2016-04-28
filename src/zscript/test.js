@@ -9,7 +9,14 @@ function assert(condition, message="Assertion failed") {
 }
 
 var testsStruct = zs.env.getEnv(zs.compiler.globalEnv, zs.types._symbol('tests'))
+console.log("Got tests");
+console.log(testsStruct);
 console.log("Running tests: ");
-var tests = testsStruct.eval(zs.compiler.globalEnv);
+
+var resolveEnv = zs.env.newEnv();
+
+var evaled = testsStruct.resolve(resolveEnv);
+
+var tests = testsStruct.eval(zs.compiler.globalEnv)
 console.log("Got results from evaluating the tests");
 console.log(tests);
