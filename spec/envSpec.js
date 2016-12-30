@@ -1,0 +1,16 @@
+/*global zscript beforeAll expect*/
+
+describe('env', function () {
+    var env, globalEnv;
+    
+    beforeAll(function () {
+        env = zscript.env;
+        globalEnv = env.newEnv();
+    })
+
+    it('stores a value', function () {
+        env.setEnv(globalEnv, 'x', 1);
+        expect(env.getEnv(globalEnv, 'x')).toBe(1);
+    });
+    
+});

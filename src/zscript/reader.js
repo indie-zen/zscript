@@ -16,7 +16,7 @@ class TokenIterator {
   }
 
   done() {
-    this.position = tokens.length + 1;
+    this.position = this.tokens.length + 1;
   }
 
   isDone() {
@@ -120,8 +120,6 @@ export function readString(str) {
 
   // TODO Handle expressions that span more than one line, and
   // handle more than one expression on a single line.
-  console.log('Got tokens');
-  console.log(tokens);
-  var ast = readNextExpression(tokens);
-  return (ast, iterator);
+  var ast = readNextExpression(tokens)
+  return [ast, tokens];
 }

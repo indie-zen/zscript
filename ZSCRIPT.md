@@ -1,13 +1,12 @@
 
 ZScript
 ======
-***(or should it be called ZLang?)***
 
-Scripting language used for Zen Spaces
+Scripting language used for Zen Spaces.
 
 This is a functional language that readily describes logic and algorithms within Zen Spaces.
 
-Unlike Lisp /  Clojure, the default for a construct is that it is assumed to be meta data instead of data or code.
+Unlike Lisp / Clojure, the default ZScript construct is meta data instead of data or code, meaning it describes a function but does not execute the function.
 
 Why a new language?
 ---
@@ -24,7 +23,7 @@ Things that can be done in other languages that require additional syntax or cod
 
 ### Meta Programming
 
-Within ZScript, functions aren't executed immediately because they're built through composition and inheritance.  
+Within ZScript, functions aren't executed immediately because they're built through composition and inheritance.
 
 When a function is defined and a function call to that function is defined, the calls are not executed, but rather the metadata for functions and function calls are created first, and it takes additional instructions to actually execute the function calls.
 
@@ -34,11 +33,11 @@ This could easily be done in Lisp through the use of macros and metadata, but th
 
 With ZScript, the default is the creation of a macro / metadata and it requires additional / special syntax to execute the code.
 
-Instead of a REPL (read, evaluate, print loop), we have a read, compile, manipulate, subscribe.  The compile / manipulate steps are where functions are compiled and then manipulated, and instead of a single execution, the results are a subscription, so if values change then the functions are re-executed as required for the subscription.
+Instead of a REPL (read, evaluate, print loop), the default interactive steps within ZScript are read, compile, manipulate, publish, subscribe.  The compile / manipulate steps are where functions are compiled and then manipulated, and instead of a single execution, the results are published, so if values change then the functions are re-executed as required to satisfy subscriptions.
 
 ### Reactive
 
-Zen Spaces functions are executed in a reactive way, with function calls memoized and normally implemented as a subscription instead of as a single function call.  This could easily be implemented in other languages (Python, ES6, Lisp) but the memoized / reactive functions would require additional syntax instead of being the default behavior
+Zen Spaces functions are executed in a reactive way, with function calls memoized and normally implemented as a subscription instead of as a single function call.  This could easily be implemented in other languages (Python, ES6, Lisp) but the memoized / reactive functions would require additional syntax instead of being the default behavior.
 
 ### Event sourced
 

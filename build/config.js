@@ -1,15 +1,13 @@
 var appRoot = 'src/';
 
-// Translated generator
-var gen_exe = 'dist/';
+// Translated interpreter
+var zscript_exe = 'dist/';
 
 module.exports = {
   roots : {
-    gen_exe : gen_exe,    // Babel converted generator
-    //gen_src : appRoot  // ES6 generator code
+    zscript_exe : zscript_exe    // Babel converted zscript interpreter
   },
   paths : {
-    gen_src : appRoot +'**/*.js',
-    //gen_exe : xgen + '**/*.js'
+    zscript_src : appRoot +'**/*.js'
   }
 };

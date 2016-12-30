@@ -1,27 +1,29 @@
 {
-  "name" : "metazen-bootstrap",
-  "version" : "0.0.1",
-  "description" : "Bootstrap for Meta Zen",
-  "keywords" : [
-    "metazen", "zenspaces"
+  "name": "metazen-bootstrap",
+  "version": "0.0.1",
+  "description": "Bootstrap for Meta Zen",
+  "keywords": [
+    "metazen",
+    "zenspaces"
   ],
-  "homepage" : "meta.indiezen.org",
-  "author" : "Tony Richards <linterra@gmail.com> (http://indiezen.com)",
-  "devDependencies" : {
+  "homepage": "meta.indiezen.org",
+  "author": "Tony Richards <linterra@gmail.com> (http://indiezen.com)",
+  "devDependencies": {
+    "babel-plugin-transform-class-properties": "^6.0.0",
+    "babel-plugin-transform-decorators-legacy": "^1.0.0",
+    "babel-preset-es2015-node5": "^1.0.0",
     "browser-sync": "^2.11.0",
+    "console-group": "^0.2.0",
     "del": "^1.1.0",
-    "object.assign": "^1.0.3",
-    "gulp" : "^3.8.10",
-    "gulp-sass" : "^2.1.0",
-    "gulp-babel" : "^6.0.0",
-    "babel-preset-es2015-node5" : "^1.0.0",
-    "babel-plugin-transform-decorators-legacy" : "^1.0.0",
-    "babel-plugin-transform-class-properties" : "^6.0.0",
-    "gulp-exec" : "^2.1.2",
-    "require-dir": "^0.1.0",
-    "vinyl-paths": "^1.0.0",
     "ffi": "^2.0.0",
+    "gulp": "^3.8.10",
+    "gulp-babel": "^6.0.0",
+    "gulp-exec": "^2.1.2",
+    "gulp-sass": "^2.1.0",
+    "jasmine": "^2.5.2",
+    "object.assign": "^1.0.3",
     "readline-history": "^1.2.0",
-    "console-group": "^0.2.0"
+    "require-dir": "^0.1.0",
+    "vinyl-paths": "^1.0.0"
   }
 }

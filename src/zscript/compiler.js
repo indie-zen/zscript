@@ -1,7 +1,7 @@
 const core = require('./core.js');
 const types = require('./types.js');
 
-const reader = require('./reader.js');
+export const reader = require('./reader.js');
 
 require('console-group').install();
 
