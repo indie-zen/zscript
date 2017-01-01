@@ -18,7 +18,7 @@ I'm re-implementing Zen Spaces and Meta Zen using ZScript which allows me to wri
 
 To build the code, use the following steps.
 
-Ensure that [NodeJS](http://nodejs.org/) is installed.
+Ensure that [NodeJS](http://nodejs.org/) (6.0 or greater) is installed.
 
 Install libedit-dev (for command-line repl)
 ```shell

@@ -171,7 +171,7 @@ export class FunctionDefinition {
     this.body = body;
   }
 
-  eval(env, args) {
+  evaluate(env, args) {
     console.group('Evaluating function definition');
 
     // For now assume a function definition is nothing more than a function call
@@ -181,7 +181,7 @@ export class FunctionDefinition {
 
     var funcEnv = newEnv(env, this.args, args);
 
-    var results = this.body.eval(funcEnv);
+    var results = this.body.evaluate(funcEnv);
     console.log(results);
     console.groupEnd();
     return results;
@@ -249,7 +249,7 @@ class ScriptEvaluator {
         console.group('Creating and then calling function');
         const [sym, ...args] = script;
         var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
-        results = funcCall.eval(this.env);
+        results = funcCall.evaluate(this.env);
         console.groupEnd();
         break;
       case 'vector':
@@ -272,7 +272,7 @@ class ScriptEvaluator {
       case 'function':
         throw new Error("evalCompiledScript: function; how did we get here?");
       case 'object':
-         results = script.eval(this.env);
+         results = script.evaluate(this.env);
         break;
       default:
         results = script;
@@ -315,7 +315,7 @@ export class FunctionCall {
     return this;
   }
 
-  eval(env) {
+  evaluate(env) {
     console.group(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
     var results = null;
 
@@ -345,7 +345,7 @@ export class FunctionCall {
       case 'object':
         // Assume it's a function call.
         //console.log(func.getType());
-        results = func.eval(evalEnv, args);
+        results = func.evaluate(evalEnv, args);
         break;
       default:
         console.log("Calling function of type");
@@ -365,13 +365,13 @@ class MapHandler {
     this.listOfValues = listOfValues;
   }
 
-  eval(env) {
+  evaluate(env) {
     // Return a list of function calls
     var evaluator = new ScriptEvaluator(env);
     const listOfValues = evaluator.evalCompiledScript(this.listOfValues);
     var results = Array.from(listOfValues, value =>
-      functionService.createFunctionCall(env, this.symbol, value).eval(env));
-    console.log('MapHandler::eval');
+      functionService.createFunctionCall(env, this.symbol, value).evaluate(env));
+    console.log('MapHandler::evaluate');
     console.log(this.symbol);
     console.log(this.listOfValues);
     console.log(listOfValues);
@@ -387,7 +387,7 @@ class DeferredSymbol {
     this.symbolFunc = symbolFunc;
   }
 
-  eval(env) {
+  evaluate(env) {
     console.group("Evaluating DeferredSymbol");
     console.log(this.namespace);
     console.log(this.symbolFunc);
@@ -419,7 +419,7 @@ function map_function(func, list, env) {
   // calls and/or function definitions (definitely the latter).
   // For now, assume the list is a list of symbols.
   var newFuncCalls = Array.from(list, arg => {
-    return functionService.createFunctionCall(env, func, arg).eval(env);
+    return functionService.createFunctionCall(env, func, arg).evaluate(env);
   })
   console.log(newFuncCalls);
   console.groupEnd();
