@@ -112,7 +112,6 @@ export function compileScript(ast, env) {
             console.log(newSymbol);
             return newSymbol;
         }
-        return null;
       case 'namespace':
         console.log("Creating namespace");
         // Iterate through the symbols in a1 and compile the values
@@ -351,7 +350,6 @@ export class FunctionCall {
         console.log("Calling function of type");
         console.log(types.getType(func));
         throw new Error(`Function type is not supported: ${types.getType(func)}`);
-        break;
     }
     console.log(results);
     console.groupEnd();

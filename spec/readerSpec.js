@@ -1,5 +1,8 @@
 /*global zscript beforeAll expect*/
 
+/**
+ * Unit tests for reader
+ */
 describe('reader', function () {
     var scriptString = '(def x 1)', 
         reader = zscript.compiler.reader;

@@ -1,5 +1,8 @@
 /*global zscript beforeAll expect*/
 
+/**
+ * Unit tests for env
+ */
 describe('env', function () {
     var env, globalEnv;
     
