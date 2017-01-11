@@ -3,9 +3,9 @@
 /**
  * Pub / Sub JavaScript integration
  */
-describe('zscript', function() {
+describe('zscript pub/sub', function() {
   var zs;
-  
+
   beforeEach(function() {
     zs = new zscript.Context();
   });

@@ -36,6 +36,10 @@ export class Context {
 
   /**
    * Load a ZScript using a string.
+   * 
+   * @param {string} scriptString zscript in a string
+   * @param {Environment} env optional environment to use for symbols; 
+   *  if not specified then use the global environment for this context.
    */
   loadScript(scriptString, env) {
     env = env || this.env;

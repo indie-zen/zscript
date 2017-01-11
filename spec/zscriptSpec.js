@@ -152,5 +152,22 @@ describe('zscript', function() {
     let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
     expect(test.evaluate(globalEnv, [13, 23])).toEqual([26, 46]);
   });
+  
+  it('supports a simple lambda function', function () {
+    loadScript(`
+;;; Simple lambda function
+(def lambda2
+  (func
+    []
+      (func [] (+ 1 1))))
+      
+(def test
+  (func []
+    (lambda2 [x y])))
+    `, globalEnv);
+    let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
+    expect(test.evaluate(globalEnv, [])).toEqual(2);
+    
+  });
 
 });
