@@ -378,13 +378,33 @@ class MapHandler {
   }
 }
 
+/**
+ * A symbol where the symbol name is partially defined by a function that
+ * returns a string.
+ */
 class DeferredSymbol {
+  
+  /**
+   * @param {EnvironmentModel} env 
+   * @param {string} namespace - root namespace for the symbol (using . as a namespace
+   * separator)
+   * @param {function} symbolFunc - a function that returns a string.  The namespace
+   * is concatenated with the results of this function in order to determine the
+   * final string representation of the symbol.
+   */
   constructor(env, namespace, symbolFunc) {
     this.env = env;
     this.namespace = namespace;
     this.symbolFunc = symbolFunc;
   }
 
+  /**
+   * Evaluate the symbolFunc provided in the constructor to determine the full
+   * symbolic name, and then resolve to the symbol.
+   * 
+   * @param {EnvironmentModel} env - environment used when executing symbolFunc.
+   * @return symbol derived from the namespace + symbolFunc()
+   */
   evaluate(env) {
     console.group("Evaluating DeferredSymbol");
     console.log(this.namespace);
@@ -435,6 +455,7 @@ function call_function(symbol, args, env) {
   console.groupEnd();
   return results;
 }
+
 // compiler_namespace is added to the global environment
 const compiler_namespace = new Map([
   ['map', map_function],

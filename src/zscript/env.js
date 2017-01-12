@@ -1,19 +1,65 @@
 const types = require('./types.js');
 
-class Environment {
+class EnvironmentModel {
   toString() {
     var symbols = Object.getOwnPropertySymbols(this);
     return "Environment { " + Array.from(symbols,
         k => `${Symbol.keyFor(k)} : ${this[k]}`).join(', ')
       + " }";
   }
-
-  // TODO Move getEnv and setEnv to this class;
-  // What about newEnv?  Move to constructor?
 }
 
-export function newEnv(outer=new Environment(), binds=[], exprs=[]) {
-    var e = Object.setPrototypeOf(new Environment(), outer)
+export class Environment {
+  constructor(env) {
+    this.$model = env || newEnv();
+  }
+
+  /**
+   * Convert to a symbol
+   * @todo should this be here or in types?  Probably types
+   */
+  toSymbol(str) {
+    if(typeof str === 'string') {
+      return types._symbol(str);
+    } else if (typeof str === 'symbol') {
+      return str;
+    }
+    // Support other conversions?
+    throw new Error(`Cannot convert ${typeof str} to a symbol`);
+  }
+  
+  /**
+   * Get a symbol from this environment.
+   * 
+   * @param {symbol|string} key - if this is a string then it is converted
+   *  to a symbol.
+   * @param {bool} ignoreNotFound if false and the key is not found then
+   *  an exception is thrown; if true and the key is not found, undefined is
+   * returned.
+   * @return {any} value for the key, or undefined if the key is not found.
+   */
+  get(key, ignoreNotFound = false) {
+    var symbol = this.toSymbol(key);
+    return getEnv(this.$model, symbol, ignoreNotFound);
+  }
+
+  /**
+   * Set a value in this environment.
+   * 
+   * @param {symbol|string} key to use to index the value.  
+   *  If this is a string then it is converted to a symbol.
+   * @param {any} value to set
+   */
+  set(key, value) {
+    var symbol = this.toSymbol(key);
+    return setEnv(this.$model, symbol, value);
+  }
+  
+}
+
+// TODO These functions (newEnv, getEnv, setEnv) should be private
+export function newEnv(outer=new EnvironmentModel(), binds=[], exprs=[]) {
+    var e = Object.setPrototypeOf(new EnvironmentModel(), outer)
     // Bind symbols in binds to values in exprs
     for (var i=0; i<binds.length; i++) {
         if (types.getType(binds[i]) === "vector") {

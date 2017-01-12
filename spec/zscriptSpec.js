@@ -4,26 +4,18 @@
  * Complete end to end tests for ZScript
  */
 describe('zscript', function() {
-  var toSymbol = zscript.types._symbol,
-    toVector = zscript.types._vector,
-    globalEnv;
-
+  var zs;
+  
+  const toSymbol = zscript.types._symbol,
+    toVector = zscript.types._vector;
+    
   beforeEach(function() {
-    globalEnv = zscript.env.newEnv();
+    zs = new zscript.Context();
   });
 
-  function loadScript(scriptString, env) {
-    env = env || globalEnv;
-    var tokens = zscript.compiler.reader.tokenize(scriptString);
-    while (!tokens.isDone()) {
-      var ast = zscript.compiler.reader.readNextExpression(tokens);
-      zscript.compiler.compileScript(ast, env);
-    }
-  }
-
   it('defines a symbol for a constant', function() {
-    loadScript('(def x 1)', globalEnv);
-    let x = zscript.env.getEnv(globalEnv, toSymbol('x'));
+    zs.loadScript('(def x 1)');
+    let x = zs.env.get('x');
 
     // TODO This should NOT be a number, but rather something that resolves
     // to a number.
@@ -34,34 +26,33 @@ describe('zscript', function() {
 
   // Not functioning yet; need to fix.
   xit('constants can be evaluated', function() {
-    loadScript('(def x 1)', globalEnv);
-    var x = zscript.env.getEnv(globalEnv, toSymbol('x'));
+    zs.loadScript('(def x 1)');
+    var x = zs.env.get('x');
     expect(x.constructor.prototype.hasOwnProperty('evaluate')).toBe(true);
   });
 
   it('functions can be evaluated', function() {
-    loadScript(`
+    zs.loadScript(`
 (def sum
   (func [x y]
     (+ x y)))
-    `, globalEnv);
-    var sum = zscript.env.getEnv(globalEnv, toSymbol('sum'));
+    `);
+    var sum = zs.env.get('sum');
     expect(sum.constructor.prototype.hasOwnProperty('evaluate')).toBe(true);
   });
 
   it('evaluates a simple global function', function() {
-    loadScript(`
+    zs.loadScript(`
 (def sum
   (func [x y]
     (+ x y)))
-    `, globalEnv);
-    let sum = zscript.env.getEnv(globalEnv, toSymbol('sum'));
-    expect(sum.evaluate(globalEnv, [1, 2])).toBe(3);
-    expect(sum.evaluate(globalEnv, [11, 13])).toBe(24);
+    `);
+    expect(zs.evaluate('sum', [1, 2])).toBe(3);
+    expect(zs.evaluate('sum', [11, 13])).toBe(24);
   });
 
   it('evalutes a function calling another function with arguments', function() {
-    loadScript(`
+    zs.loadScript(`
 (def sum
   (func [x y]
     (+ x y)))
@@ -73,15 +64,13 @@ describe('zscript', function() {
 (def test2
   (func []
     (sum 11 13)))
-    `, globalEnv);
-    let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
-    expect(test.evaluate(globalEnv, [])).toBe(3);
-    let test2 = zscript.env.getEnv(globalEnv, toSymbol('test2'));
-    expect(test2.evaluate(globalEnv, [])).toBe(24);
+    `);
+    expect(zs.evaluate('test', [])).toBe(3);
+    expect(zs.evaluate('test2', [])).toBe(24);
   });
 
   it('evalutes a global function calling other functions', function () {
-    loadScript(`
+    zs.loadScript(`
 ;;; Global function calling other functions
 (def add100
   (func [x]
@@ -94,14 +83,13 @@ describe('zscript', function() {
 (def add300
   (func [x]
     (add200 (add100 x))))
-    `, globalEnv);
-    let add300 = zscript.env.getEnv(globalEnv, toSymbol('add300'));
-    expect(add300.evaluate(globalEnv, [1])).toBe(301);
-    expect(add300.evaluate(globalEnv, [23])).toBe(323);
+    `);
+    expect(zs.evaluate('add300', [1])).toBe(301);
+    expect(zs.evaluate('add300', [23])).toBe(323);
   });
 
   it('supports positional destructuring', function () {
-    loadScript(`
+    zs.loadScript(`
 ;;; Positional destructuring
 (def sum_of_list_of_two
   (func
@@ -111,13 +99,12 @@ describe('zscript', function() {
 (def test
   (func [x y]
     (sum_of_list_of_two [x y])))
-    `, globalEnv);
-    let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
-    expect(test.evaluate(globalEnv, [1, 2])).toBe(3);
+    `);
+    expect(zs.evaluate('test', [1, 2])).toBe(3);
   });
   
   it('supports map with a regular function', function () {
-    loadScript(`
+    zs.loadScript(`
 ;;; Map with a regular function
 (def inc_list
   (func
@@ -132,13 +119,12 @@ describe('zscript', function() {
 (def test
   (func [x y]
     (inc_list [x y])))
-    `, globalEnv);
-    let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
-    expect(test.evaluate(globalEnv, [1, 2])).toEqual([2, 3]);
+    `);
+    expect(zs.evaluate('test', [1, 2])).toEqual([2, 3]);
   });
 
   xit('supports map with a lambda function', function () {
-    loadScript(`
+    zs.loadScript(`
 ;;; Map with a lambda function
 (def double_list
   (func
@@ -148,13 +134,12 @@ describe('zscript', function() {
 (def test
   (func [x y]
     (double_list [x y])))
-    `, globalEnv);
-    let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
-    expect(test.evaluate(globalEnv, [13, 23])).toEqual([26, 46]);
+    `);
+    expect(zs.evaluate('test', [13, 23])).toEqual([26, 46]);
   });
   
   it('supports a simple lambda function', function () {
-    loadScript(`
+    zs.loadScript(`
 ;;; Simple lambda function
 (def lambda2
   (func
@@ -164,10 +149,7 @@ describe('zscript', function() {
 (def test
   (func []
     (lambda2 [x y])))
-    `, globalEnv);
-    let test = zscript.env.getEnv(globalEnv, toSymbol('test'));
-    expect(test.evaluate(globalEnv, [])).toEqual(2);
-    
+    `);
+    expect(zs.evaluate('test', [])).toEqual(2);
   });
-
 });

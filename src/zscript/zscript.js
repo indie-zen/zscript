@@ -7,7 +7,7 @@ export const env = require('./env.js');
 
 export class EventSink {
   constructor() {
-    this.subscribers = [];
+    this.$subscribers = [];
   }
   
   publish(value) {
@@ -15,10 +15,11 @@ export class EventSink {
   }
   
   subscribe(subscriber) {
-    this.subscribers.push(subscriber);
+    this.$subscribers.push(subscriber);
   }
   
 }
+
 
 /**
  * Context presents a nice facade around the strange mix of procedural and
@@ -29,9 +30,19 @@ export class EventSink {
  * stable.
  */
 export class Context {
-  constructor() {
-    this.env = env.newEnv();
+  constructor(rawEnv) {
+    this.env = new env.Environment(rawEnv);
+    console.log(`Constructed env ${this.env} with model ${this.env.$model}`);
     this.valueSinks = new Map();
+  }
+
+  $getEnvModel(env) {
+    env = env || this.env;
+    // If a wrapper is used, get the environment model
+    if(env.constructor.name === "Environment") {
+      env = env.$model;
+    }
+    return env;
   }
 
   /**
@@ -42,7 +53,8 @@ export class Context {
    *  if not specified then use the global environment for this context.
    */
   loadScript(scriptString, env) {
-    env = env || this.env;
+    env = this.$getEnvModel(env);
+    console.log(`Loading script into ${env}`);
     var tokens = compiler.reader.tokenize(scriptString);
     while (!tokens.isDone()) {
       var ast = compiler.reader.readNextExpression(tokens);
@@ -71,5 +83,19 @@ export class Context {
     if (!initialValue === undefined) {
       sink.publish(initialValue);
     }
+    
+    return sink;
+  }
+  
+  /**
+   * 
+   * @param {Environment} optional env; if not specified then the global
+   *  environment for this Context is used
+   **/
+  evaluate(node, args, env) {
+    if(typeof node === 'string') {
+      node = this.env.get(node);
+    }
+    return node.evaluate(this.$getEnvModel(), args);
   }
 }
