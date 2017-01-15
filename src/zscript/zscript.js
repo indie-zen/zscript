@@ -5,20 +5,6 @@ export const slurp = core.slurp;
 export const compiler = require('./compiler.js');
 export const env = require('./env.js');
 
-export class EventSink {
-  constructor() {
-    this.$subscribers = [];
-  }
-  
-  publish(value) {
-    
-  }
-  
-  subscribe(subscriber) {
-    this.$subscribers.push(subscriber);
-  }
-  
-}
 
 
 /**
@@ -36,10 +22,21 @@ export class Context {
     this.valueSinks = new Map();
   }
 
+  getEnv(env) {
+    env = env || this.env;
+    if (env.constructor.name === 'EnvironmentModel') {
+      env = new env.Environment(env)
+    }
+    if (env.constructor.name !== 'Environment') {
+      throw new Error(`Context.getEnv called with invalid type ${env.constructor.name}`);
+    }
+    return env;
+  }
+
   $getEnvModel(env) {
     env = env || this.env;
     // If a wrapper is used, get the environment model
-    if(env.constructor.name === "Environment") {
+    if (env.constructor.name === "Environment") {
       env = env.$model;
     }
     return env;
@@ -76,26 +73,85 @@ export class Context {
       sink = this.valueSinks.get(symbol);
     }
     else {
-      sink = new EventSink();
+      sink = new compiler.EventSink();
       this.valueSinks.set(symbol, sink);
     }
 
     if (!initialValue === undefined) {
       sink.publish(initialValue);
     }
-    
+
     return sink;
   }
-  
+
   /**
+   * Define a new node identified by th specified symbol within the specified environment 
+   * (or the global environment if the environment isn't specified)
    * 
-   * @param {Environment} optional env; if not specified then the global
-   *  environment for this Context is used
-   **/
+   * @param {string|symbol} symbol - symbol used to identify the new ndoe.
+   * @param {Environment} optional env - environment where the symbol is stored.
+   */
+  def(symbol, env) {
+    env = this.getEnv(env);
+    var node = new compiler.Node();
+    env.set(symbol, node);
+    return node;
+  }
+
   evaluate(node, args, env) {
-    if(typeof node === 'string') {
+    if (typeof node === 'string') {
       node = this.env.get(node);
     }
     return node.evaluate(this.$getEnvModel(), args);
+  }
+
+  /**
+   * Evaluate a script string.
+   * 
+   * @param {string} scriptString - string to be compiled and evaluated
+   * @param {Environment} optional env; if not specified then the global
+   * environment for this Context is used.  This environment is not modified.
+   * A new environment is returned with the modifications, if any.
+   * @return {Array} First entry in the array is an array of results from 
+   * evaluating the script string.  The second array is the environment
+   * used during the evaluation, including any modifications.
+   **/
+  evaluate(scriptString, defaultEnv) {
+    // TODO Possibly env should default to a new child environment
+    var childEnv = env.newEnv(this.$getEnvModel(defaultEnv)),
+      scripts = compiler.compileString(scriptString, childEnv),
+      responses = [];
+      
+    scripts.map((script) => {
+      responses.push(script.evaluate(childEnv, []));
+    });
+    return [responses, new env.Environment(childEnv)];
+  }
+
+  /**
+   * Subscribe to the specified sybol
+   * 
+   * @param {string|symbol|Node} symbol that specifies which node to subscribe, or the
+   * node to subscribe.
+   * @param {function} listener that gets called when the node specified by the symbol
+   * publishes a new value.
+   * @param {Environment} optional env - environment where the symbol can be found.
+   * If not specified then use the global env in this Context.  Not used if the 
+   * first argument to this function is a Node.
+   */
+  subscribe(symbol, listener, env) {
+    var node;
+    if (typeof symbol === 'object' && symbol.cconstructor.name === 'Node') {
+      node = symbol;
+    }
+    else {
+      node = this.getEnv(env).get(symbol);
+
+      if (node.constructor.name !== 'Node') {
+        throw new Error(`Context.subsccribe must specify a Node or a symbol that represents a node; found ${node.constructor.name} instead`);
+      }
+    }
+
+    return node.subscribe(listener);
   }
 }

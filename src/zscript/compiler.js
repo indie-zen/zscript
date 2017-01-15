@@ -5,13 +5,94 @@ export const reader = require('./reader.js');
 
 require('console-group').install();
 
-import { newEnv, setEnv, getEnv } from './env.js';
+import {
+  newEnv,
+  setEnv,
+  getEnv
+}
+from './env.js';
+
+export class EventSink {
+  constructor() {
+    this.$subscribers = [];
+  }
+
+  publish(value) {
+
+  }
+
+  subscribe(subscriber) {
+    this.$subscribers.push(subscriber);
+  }
+
+}
+
+/**
+ * ZScript interpreter language node
+ */
+export class Node {
+  constructor(model) {
+    // If the model isn't defined then this is probably a raw EventSink.
+    // // Make sure the model is not undefine / null
+    // if(!model) {
+    //   throw new Error('Error constructing language node without a model.');
+    // }
+
+
+    // The model we're wrapping; generally some sort of language element
+    // created by FunctionService.
+    this.$model = model;
+    this.$event = new EventSink();
+  }
+
+  evaluate(env, args) {
+    // TODO If $model is a FunctionDefinition (shouldn't it always be?)
+    // check to see if the args are dirty / different since the last evaluate,
+    // essentially memoizing this evaluation.
+
+    // TODO Handle other class types
+    if (this.$model.constructor.name !== 'FunctionDefinition') {
+      // Delegate to $model
+      return this.$model.evaluate.apply(this.$model, arguments);
+    }
+    if (this.$model.constructor.name !== 'FunctionCall') {
+      // Delegate to $model
+      return this.$model.evaluate.apply(this.$model, arguments);
+    }
+
+    throw new Error(`Node.evaluate cannot handle ${this.$model.constructor.name}`);
+  }
+
+  $buildGraph() {
+
+
+    this.$isGraphBuilt = true;
+  }
+
+  subscribe(listener) {
+    // Delegate to EventSink
+    EventSink.prototype.subscribe.apply(this.$event, arguments);
+
+    // If the graph starting at this node has not yet been built, build it.
+    if (!this.$isGraphBuilt) {
+      this.$buildGraph();
+    }
+
+    // Handle first execution; find if this node depends on other nodes and
+    // see if any of those nodes have values.
+  }
+
+  publish(value) {
+    // Delegate to EventSink
+    return EventSink.prototype.publish.apply(this.$event, arguments);
+  }
+}
 
 function compileAST(ast, env) {
   const astType = types.getType(ast);
-  switch(astType) {
+  switch (astType) {
     case 'array':
-      return ast.map( (x) => compileScript(x, env) );
+      return ast.map((x) => compileScript(x, env));
     default:
       return ast;
   }
@@ -24,13 +105,14 @@ class FunctionService {
 
   createFunction(args, body) {
     const newFunc = new FunctionDefinition(args, body);
-    return newFunc;
+    return new Node(newFunc);
   }
 
   createFunctionCall(env, name, ...args) {
     // TODO Need to track this?  Probably, to eventually determine
     // if all calls evaluate to a function that exists.
-    return new FunctionCall(env, name, ...args);
+    const newFuncCall = new FunctionCall(env, name, ...args);
+    return new Node(newFuncCall);
   }
 
   createMap(symbol, list) {
@@ -45,31 +127,32 @@ class FunctionService {
 export var functionService = new FunctionService();
 
 export function compileScript(ast, env) {
-  while(true) {
+  while (true) {
     if (types.getType(ast) != 'array') {
       return compileAST(ast, env);
     }
 
-    if(ast.length === 0) {
+    if (ast.length === 0) {
       return;
     }
 
     var [a0, a1, a2, ...an] = ast;
     const a0type = types.getType(a0);
     const a0sym = a0type === 'symbol' ? Symbol.keyFor(a0) : Symbol(':default');
-    switch(a0sym) {
+    switch (a0sym) {
       // Define a variable
       case 'def':
         var def = compileScript(a2, env);
         env[a1] = def;
         console.log(`def ${Symbol.keyFor(a1)}`);
         if (types.getType(def) === 'symbol') {
-            console.log(Symbol.keyFor(def));
-        } else {
+          console.log(Symbol.keyFor(def));
+        }
+        else {
           console.log(def);
         }
         return a1;
-      // Define a new function
+        // Define a new function
       case 'func':
         // console.log("Creating a new function");
         // console.log(a1);
@@ -96,7 +179,7 @@ export function compileScript(ast, env) {
         return null;
       case 'using':
         console.log('Using:');
-        switch(types.getType(a2)) {
+        switch (types.getType(a2)) {
           case 'symbol':
             var newSymbol = types._symbol(Symbol.keyFor(a1) + "." + Symbol.keyFor(a2));
             console.log(newSymbol);
@@ -132,7 +215,7 @@ export function compileScript(ast, env) {
         console.log(a2);
         return functionService.createMap(a1, a2);
       default:
-        if(types.getType(a0) === "array") {
+        if (types.getType(a0) === "array") {
           var newA0 = compileScript(a0, env);
           console.log("New a0");
           console.log(newA0);
@@ -141,9 +224,9 @@ export function compileScript(ast, env) {
         // console.log("Default compileScript handler");
         const args = Array.from(ast.slice(1),
             value => compileScript(value, env))
-        // FIXME compileScript for each of the args
-        // I think since the rest of the args aren't compiled then they
-        // have to be compiled in evalCompiledScript for arrays.
+          // FIXME compileScript for each of the args
+          // I think since the rest of the args aren't compiled then they
+          // have to be compiled in evalCompiledScript for arrays.
         return functionService.createFunctionCall(env, a0, ...args);
     }
   }
@@ -153,10 +236,22 @@ export function loadFile(fileName, env) {
   // TODO Don't re-load a file that's already been loaded.
   var loadedFile = core.slurp(fileName);
   var tokens = reader.tokenize(loadedFile);
-  while(!tokens.isDone()) {
+  while (!tokens.isDone()) {
     var ast = reader.readNextExpression(tokens);
     compileScript(ast, env);
   }
+}
+
+export function compileString(scriptString, env) {
+  env = env || newEnv();
+  var tokens = reader.tokenize(scriptString),
+    scripts = [];
+
+  while (!tokens.isDone()) {
+    var ast = reader.readNextExpression(tokens);
+    scripts.push(compileScript(ast, env));
+  }
+  return scripts;
 }
 
 // Functions:
@@ -201,7 +296,7 @@ class ScriptResolver {
     console.log(types.getType(script));
     console.log(script);
     var results = script;
-    switch(types.getType(script)) {
+    switch (types.getType(script)) {
       case 'array':
         // FIXME as with evalCompiledScript, this needs to be fixed
         const [sym, ...args] = script;
@@ -236,7 +331,7 @@ class ScriptEvaluator {
 
     //console.log(this.env);
     //console.log(types.getType(script));
-    switch(types.getType(script)) {
+    switch (types.getType(script)) {
       case 'array':
         // An array is a function call where the first value in the array
         // is the symbol of the function to be called, and the rest of
@@ -262,7 +357,8 @@ class ScriptEvaluator {
         // If the symbol wasn't found, just return the symbol.
         if (value === null) {
           results = script;
-        } else {
+        }
+        else {
           console.log(value);
           results = this.evalCompiledScript(value);
         }
@@ -271,7 +367,7 @@ class ScriptEvaluator {
       case 'function':
         throw new Error("evalCompiledScript: function; how did we get here?");
       case 'object':
-         results = script.evaluate(this.env);
+        results = script.evaluate(this.env);
         break;
       default:
         results = script;
@@ -286,7 +382,7 @@ class ScriptEvaluator {
 
 export class FunctionCall {
   constructor(env, nameOrDef, ...args) {
-    if(types.getType(nameOrDef) === 'symbol') {
+    if (types.getType(nameOrDef) === 'symbol') {
       this.definition = null;
       this.name = nameOrDef;
 
@@ -323,7 +419,7 @@ export class FunctionCall {
     var evalEnv = newEnv(this.env);
     add_globals(evalEnv);
     // Overlay with symbols from function call
-    for(var symbol of Object.getOwnPropertySymbols(env)) {
+    for (var symbol of Object.getOwnPropertySymbols(env)) {
       setEnv(evalEnv, symbol, getEnv(env, symbol));
     }
 
@@ -335,7 +431,7 @@ export class FunctionCall {
     console.log(this.args);
     console.log('The evaluated args are')
     console.log(args);
-    switch(types.getType(func)) {
+    switch (types.getType(func)) {
       case 'function':
         console.log('Calling function');
         console.log(func);
@@ -383,7 +479,7 @@ class MapHandler {
  * returns a string.
  */
 class DeferredSymbol {
-  
+
   /**
    * @param {EnvironmentModel} env 
    * @param {string} namespace - root namespace for the symbol (using . as a namespace
