@@ -21,7 +21,7 @@ describe('zscript pub/sub', function() {
     (x)))
     `);
 
-    zs.subscribe('test', listener);
+    zs.subscribe('(test)', listener);
     // Expect to get called with the initial value
     expect(listener).toHaveBeenCalledWith(13);
     expect(listener.calls.count()).toEqual(1);
@@ -33,18 +33,78 @@ describe('zscript pub/sub', function() {
     // Publish a new value; the returned listener is a function that
     // is called with the new value.
     var x = zs.def('x');
-    x.publish(13);
     zs.loadScript(`
 (def test
   (func []
     (x)))
     `);
 
-    // TODO this fails because env.get('test') returns a function rather than a node;
-    // TODO all functions, function calls, arguments, etc must be wrapped with nodes.
-    zs.subscribe('test', listener);
+    function callback(newValue, details) {
+      return listener(newValue);
+    }
+    zs.subscribe('(test)', callback);
+
+    x.publish(13);
+
     // Expect to get the initial value
     expect(listener).toHaveBeenCalledWith(13);
+    expect(listener.calls.count()).toEqual(1);
+  });
+
+  xit('publishes a new value for each dependency change', function () {
+    var listener = jasmine.createSpy('listener');
+
+    // Publish a new value; the returned listener is a function that
+    // is called with the new value.
+    var x = zs.def('x');
+    zs.loadScript(`
+(def test
+  (func []
+    (x)))
+    `);
+
+    function callback(newValue, details) {
+      return listener(newValue);
+    }
+    
+    zs.subscribe('(test)', callback);
+
+    x.publish(13);
+    expect(listener).toHaveBeenCalledWith(13);
+    expect(listener.calls.count()).toEqual(1);
+
+    x.publish(23);
+    expect(listener).toHaveBeenCalledWith(23);
+    expect(listener.calls.count()).toEqual(2);
+
+    x.publish(51);
+    expect(listener).toHaveBeenCalledWith(51);
+    expect(listener.calls.count()).toEqual(3);
+  });
+
+  xit('publishes a computed value when a simple dependency changes', function () {
+    var listener = jasmine.createSpy('listener');
+
+    // Publish a new value; the returned listener is a function that
+    // is called with the new value.
+    var x = zs.def('x');
+    zs.loadScript(`
+(def test
+  (func []
+    (+ x 1)))
+    `);
+
+    function callback(newValue, details) {
+      return listener(newValue);
+    }
+    zs.subscribe('(test)', callback);
+
+    // FIXME this causes a stack overflow because of a circular reference;
+    x.publish(13);
+
+    // Expect to get the initial value
+    expect(listener).toHaveBeenCalledWith(14);
+    expect(listener.calls.count()).toEqual(1);
   });
 
 });

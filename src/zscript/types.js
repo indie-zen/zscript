@@ -19,6 +19,12 @@ export function getType(obj) {
   switch(typeof(obj)) {
     case 'number': return 'number'
     case 'function': return 'function'
+    case 'object': 
+      if (obj.constructor) {
+        return obj.constructor.name;
+      } else {
+        return 'object';
+      }
     default:
       return typeof(obj);
   }

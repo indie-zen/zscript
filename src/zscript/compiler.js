@@ -12,81 +12,7 @@ import {
 }
 from './env.js';
 
-export class EventSink {
-  constructor() {
-    this.$subscribers = [];
-  }
-
-  publish(value) {
-
-  }
-
-  subscribe(subscriber) {
-    this.$subscribers.push(subscriber);
-  }
-
-}
-
-/**
- * ZScript interpreter language node
- */
-export class Node {
-  constructor(model) {
-    // If the model isn't defined then this is probably a raw EventSink.
-    // // Make sure the model is not undefine / null
-    // if(!model) {
-    //   throw new Error('Error constructing language node without a model.');
-    // }
-
-
-    // The model we're wrapping; generally some sort of language element
-    // created by FunctionService.
-    this.$model = model;
-    this.$event = new EventSink();
-  }
-
-  evaluate(env, args) {
-    // TODO If $model is a FunctionDefinition (shouldn't it always be?)
-    // check to see if the args are dirty / different since the last evaluate,
-    // essentially memoizing this evaluation.
-
-    // TODO Handle other class types
-    if (this.$model.constructor.name !== 'FunctionDefinition') {
-      // Delegate to $model
-      return this.$model.evaluate.apply(this.$model, arguments);
-    }
-    if (this.$model.constructor.name !== 'FunctionCall') {
-      // Delegate to $model
-      return this.$model.evaluate.apply(this.$model, arguments);
-    }
-
-    throw new Error(`Node.evaluate cannot handle ${this.$model.constructor.name}`);
-  }
-
-  $buildGraph() {
-
-
-    this.$isGraphBuilt = true;
-  }
-
-  subscribe(listener) {
-    // Delegate to EventSink
-    EventSink.prototype.subscribe.apply(this.$event, arguments);
-
-    // If the graph starting at this node has not yet been built, build it.
-    if (!this.$isGraphBuilt) {
-      this.$buildGraph();
-    }
-
-    // Handle first execution; find if this node depends on other nodes and
-    // see if any of those nodes have values.
-  }
-
-  publish(value) {
-    // Delegate to EventSink
-    return EventSink.prototype.publish.apply(this.$event, arguments);
-  }
-}
+export const graph = require('./graph.js');
 
 function compileAST(ast, env) {
   const astType = types.getType(ast);
@@ -94,7 +20,7 @@ function compileAST(ast, env) {
     case 'array':
       return ast.map((x) => compileScript(x, env));
     default:
-      return ast;
+      return new graph.GraphNode(ast);
   }
 }
 
@@ -105,14 +31,14 @@ class FunctionService {
 
   createFunction(args, body) {
     const newFunc = new FunctionDefinition(args, body);
-    return new Node(newFunc);
+    return new graph.GraphNode(newFunc);
   }
 
   createFunctionCall(env, name, ...args) {
     // TODO Need to track this?  Probably, to eventually determine
     // if all calls evaluate to a function that exists.
     const newFuncCall = new FunctionCall(env, name, ...args);
-    return new Node(newFuncCall);
+    return new graph.GraphNode(newFuncCall, env);
   }
 
   createMap(symbol, list) {
@@ -280,6 +206,18 @@ export class FunctionDefinition {
     console.groupEnd();
     return results;
   }
+
+  subscribe(node, env) {
+    // TODO Handle arguments
+    if(this.args.length !== 0) {
+      throw new Error('FunctionDefinition.subscribe cannot handle arguments yet.');
+    }
+    
+    this.$graphNode = node;
+    this.body.subscribe(node, env);
+    console.log('FunctionDefinition.subscribe');
+    console.log(this.body);
+  }
 }
 
 class ScriptResolver {
@@ -366,7 +304,11 @@ class ScriptEvaluator {
         break;
       case 'function':
         throw new Error("evalCompiledScript: function; how did we get here?");
+      case 'GraphNode':
+      case 'FunctionCall':
+      case 'FunctionDefinition':
       case 'object':
+        console.log(`evalCompiledScript of type ${types.getType(script)}`);
         results = script.evaluate(this.env);
         break;
       default:
@@ -399,7 +341,7 @@ export class FunctionCall {
     this.args = args;
     // console.log(args);
   }
-
+  
   resolve(env) {
     console.group(`Resolving function call to ${Symbol.keyFor(this.name)}`);
     console.log('The original args are');
@@ -408,6 +350,70 @@ export class FunctionCall {
     this.args = resolver.resolveArray(this.args);
     console.groupEnd();
     return this;
+  }
+
+  subscribe(node, env) {
+    this.$graphNode = node;
+
+    var that = this;
+    
+    that.args.map((arg) => {
+      console.log('Subscribing to arg');
+      console.log(arg);
+      arg.subscribe(node, env);
+    });
+
+    // TODO Is this the correct environment?  If it is then it probably shouldn't be
+    // private.
+    var func = that.definition ? that.definition : getEnv(node.$env, that.name);
+
+    var bodyType = types.getType(func);
+    console.log(`FunctionCall.subscribe body type: ${bodyType}`);
+
+    switch(bodyType) {
+      case 'GraphNode':
+        func.subscribe(node, env);
+        break;
+      case 'function':
+        // Functions go off graph and should never get back on graph.
+        // TODO Determine if this function goes back on graph (not sure how).
+        break;
+      default:
+        throw new Error('FunctionCall.subscribe does not support subscribing to non GraphNode');
+    }
+  }
+
+  subscribe_old(listener, env) {
+    // TODO Properly handle environment
+    const evalEnv = env;
+    var that = this;
+    
+    // TODO subscribe to args
+    if(that.args.length !== 0) {
+      throw new Error('FunctionCall.subscribe does not support arguments yet.');
+    }
+    
+    var func = that.definition ? that.definition : getEnv(evalEnv, that.name);
+    var bodyType = types.getType(func);
+    console.log(`FunctionCall.subscribe body type: ${bodyType}`);
+
+    if(bodyType === 'GraphNode') {
+      var previousEval;
+      func.subscribe( (newValue, details) => {
+        var newEval = that.evaluate(env);
+        if(newEval !== previousEval) {
+          var newDetails = {
+            oldValue: previousEval,
+            childEnv: env, // Should this be env or details.childEnv?
+            event: details.event
+          };
+          previousEval = newEval;
+          return listener(newEval, newDetails);
+        }
+      }, env);
+    } else {
+      throw new Error('FunctionCall.subscribe does not support subscribing to non GraphNode');
+    }
   }
 
   evaluate(env) {
@@ -437,9 +443,11 @@ export class FunctionCall {
         console.log(func);
         results = func(...args, evalEnv);
         break;
+      case 'GraphNode':
+      case 'FunctionCall':
       case 'object':
         // Assume it's a function call.
-        //console.log(func.getType());
+        console.log(`Evaluating call to ${types.getType(func)}; is this a FunctionCall or a GraphNode?`);
         results = func.evaluate(evalEnv, args);
         break;
       default:
@@ -558,7 +566,7 @@ const compiler_namespace = new Map([
   ['call', call_function]
 ]);
 
-function add_globals(env) {
+export function add_globals(env) {
   // Core namespace (defined in core.js)
   for (let [k, v] of core.namespace) {
     setEnv(env, types._symbol(k), v);

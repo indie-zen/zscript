@@ -18,6 +18,8 @@ export const env = require('./env.js');
 export class Context {
   constructor(rawEnv) {
     this.env = new env.Environment(rawEnv);
+    compiler.add_globals(this.$getEnvModel());
+    
     console.log(`Constructed env ${this.env} with model ${this.env.$model}`);
     this.valueSinks = new Map();
   }
@@ -85,7 +87,7 @@ export class Context {
   }
 
   /**
-   * Define a new node identified by th specified symbol within the specified environment 
+   * Define a new GraphNode identified by th specified symbol within the specified environment 
    * (or the global environment if the environment isn't specified)
    * 
    * @param {string|symbol} symbol - symbol used to identify the new ndoe.
@@ -93,17 +95,17 @@ export class Context {
    */
   def(symbol, env) {
     env = this.getEnv(env);
-    var node = new compiler.Node();
+    var node = new compiler.graph.GraphNode();
     env.set(symbol, node);
     return node;
   }
 
-  evaluate(node, args, env) {
-    if (typeof node === 'string') {
-      node = this.env.get(node);
-    }
-    return node.evaluate(this.$getEnvModel(), args);
-  }
+  // evaluate(node, args, env) {
+  //   if (typeof node === 'string') {
+  //     node = this.env.get(node);
+  //   }
+  //   return node.evaluate(this.$getEnvModel(), args);
+  // }
 
   /**
    * Evaluate a script string.
@@ -117,7 +119,6 @@ export class Context {
    * used during the evaluation, including any modifications.
    **/
   evaluate(scriptString, defaultEnv) {
-    // TODO Possibly env should default to a new child environment
     var childEnv = env.newEnv(this.$getEnvModel(defaultEnv)),
       scripts = compiler.compileString(scriptString, childEnv),
       responses = [];
@@ -129,17 +130,44 @@ export class Context {
   }
 
   /**
-   * Subscribe to the specified sybol
+   * Subscribe to a script.
    * 
-   * @param {string|symbol|Node} symbol that specifies which node to subscribe, or the
-   * node to subscribe.
-   * @param {function} listener that gets called when the node specified by the symbol
-   * publishes a new value.
-   * @param {Environment} optional env - environment where the symbol can be found.
-   * If not specified then use the global env in this Context.  Not used if the 
-   * first argument to this function is a Node.
+   * Instead of executing a script once, this function sets up a subscription
+   * to a script with a callback that gets executed any time the results of 
+   * the script changes.
+   * 
+   * Expect at least one callback during the initial evaluation of the script, 
+   * which is the initial results of the script execution.
+   * 
+   * @param {string} scriptString - string to be compiled and evaluated
+   * 
+   * @param {function} listener that gets called when the script results change.
+   *  function(newValue, details) where details are 
+   *    {
+   *        oldValue, // previous value
+   *        childEnv, // child environment where the script is executing
+   *        event     // event that caused this result to change
+   *    }
+   * 
+   * @param {Environment} optional defaultEnv - environent within which the 
+   * script is executed.  As with ```evaluate()```, this environment is not 
+   * directly modified, and instead a new child environment is used.
    */
-  subscribe(symbol, listener, env) {
+  subscribe(scriptString, listener, defaultEnv) {
+    var childEnv = env.newEnv(this.$getEnvModel(defaultEnv)),
+      scripts = compiler.compileString(scriptString, childEnv),
+      responses = [];
+    scripts.map((script) => {
+      // Script must be a node here (we can take out this assert after testing)
+      if(script.constructor.name !== 'GraphNode') {
+        throw new Error(`GraphNode.subscribe cannot subscribe to ${script.constructor.name}`);
+      }
+      script.subscribe(listener, childEnv);
+    });
+  }
+  
+  // old implementation
+  subscribe_old(symbol, listener, env) {
     var node;
     if (typeof symbol === 'object' && symbol.cconstructor.name === 'Node') {
       node = symbol;

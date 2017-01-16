@@ -24,7 +24,6 @@ describe('compiler', function() {
         script = compileString(scriptString)[0];
         expect(script.constructor.name).toBe('Node');
     });
-    
   });
   
   
