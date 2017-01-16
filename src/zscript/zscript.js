@@ -19,8 +19,6 @@ export class Context {
   constructor(rawEnv) {
     this.env = new env.Environment(rawEnv);
     compiler.add_globals(this.$getEnvModel());
-    
-    console.log(`Constructed env ${this.env} with model ${this.env.$model}`);
     this.valueSinks = new Map();
   }
 
@@ -53,7 +51,6 @@ export class Context {
    */
   loadScript(scriptString, env) {
     env = this.$getEnvModel(env);
-    console.log(`Loading script into ${env}`);
     var tokens = compiler.reader.tokenize(scriptString);
     while (!tokens.isDone()) {
       var ast = compiler.reader.readNextExpression(tokens);
@@ -165,7 +162,7 @@ export class Context {
       script.subscribe(listener, childEnv);
     });
   }
-  
+
   // old implementation
   subscribe_old(symbol, listener, env) {
     var node;

@@ -22,7 +22,7 @@ describe('compiler', function() {
     it('wraps a function call with a node', function() {
       var scriptString = '(test)',
         script = compileString(scriptString)[0];
-        expect(script.constructor.name).toBe('Node');
+        expect(script.constructor.name).toBe('GraphNode');
     });
   });
   
