@@ -52,29 +52,29 @@ describe('zscript pub/sub', function() {
       // subscribed by callback() function
 
       // First level is (x) function call
-      console.log('First level subscription:');
+      // console.log('First level subscription:');
       var sub0 = subs[0];
-      console.log(sub0);
+      // console.log(sub0);
 
       // Second level is the lambda function definition (func [] (x))
-      console.log('Second level subscription:');
+      // console.log('Second level subscription:');
       var sub1 = sub0.getSubscribersAsArray()[0];
-      console.log(sub1);
+      // console.log(sub1);
 
       // Third level is the (test) function call
-      console.log('Third level subscription:');
+      // console.log('Third level subscription:');
       var sub2 = sub1.getSubscribersAsArray()[0];
-      console.log(sub2);
+      // console.log(sub2);
       expect(sub2.$model.name).toBe(Symbol.for('test'));
 
       // Fourth level is the zs.subscribe callback
-      console.log('Fourth level subscription:');
+      // console.log('Fourth level subscription:');
       var sub3 = sub2.getSubscribersAsArray()[0];
-      console.log(sub3);
+      // console.log(sub3);
 
       expect(sub3).toBe(callback);
 
-      console.log(x);
+      // console.log(x);
     })
 
     it('can subscribe to a function call with arguments', function() {
@@ -100,9 +100,9 @@ describe('zscript pub/sub', function() {
         depth = 1;
 
       function nextDeeperSubscription(description) {
-        console.log(`Subscription level: ${depth} - ${description}`);
+        // console.log(`Subscription level: ${depth} - ${description}`);
         sub = sub.getSubscribersAsArray()[0];
-        console.log(sub);
+        // console.log(sub);
         depth = depth + 1;
       }
 
@@ -136,8 +136,8 @@ describe('zscript pub/sub', function() {
 
     // FIXME this causes a stack overflow because of a circular reference;
     x.publish(13);
-    console.log('After publish');
-    console.log(x);
+    // console.log('After publish');
+    // console.log(x);
 
     // Expect to get the initial value
     expect(listener).toHaveBeenCalledWith(14);
@@ -148,7 +148,10 @@ describe('zscript pub/sub', function() {
     expect(listener.calls.count()).toEqual(2);
   });
 
-
+  /**
+   * Is this test necessary?  This feature is not implemented.  subscribe()
+   * does not publish anything for the initial value.
+   */
   xit('publishes the initial value at first subscription', function() {
     var listener = jasmine.createSpy('listener');
 
@@ -161,12 +164,13 @@ describe('zscript pub/sub', function() {
     `);
 
     zs.subscribe('(test)', listener);
+    
     // Expect to get called with the initial value
     expect(listener).toHaveBeenCalledWith(13);
     expect(listener.calls.count()).toEqual(1);
   });
 
-  xit('publishes a new value when a simple dependency changes', function() {
+  it('publishes a new value when a simple dependency changes', function() {
     var listener = jasmine.createSpy('listener');
 
     // Publish a new value; the returned listener is a function that
@@ -190,7 +194,7 @@ describe('zscript pub/sub', function() {
     expect(listener.calls.count()).toEqual(1);
   });
 
-  xit('publishes a new value for each dependency change', function() {
+  it('publishes a new value for each dependency change', function() {
     var listener = jasmine.createSpy('listener');
 
     // Publish a new value; the returned listener is a function that
@@ -224,5 +228,9 @@ describe('zscript pub/sub', function() {
   // TODO Write a test that re-uses a function call and a function definition
   // but with different values for arguments to make sure memoization doesn't
   // interfere with isDirty subscription optimization
+  
+  // TODO Write a test where a function definition uses a global symbol and
+  // make sure when the global symbol is published, the function is
+  // re-evaluated.
 
 });

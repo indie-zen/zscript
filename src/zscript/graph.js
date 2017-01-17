@@ -1,9 +1,20 @@
+export const ScriptEvaluator = require('./evaluator').ScriptEvaluator;
+
 import {
   newEnv,
   setEnv,
   getEnv
 }
 from './env.js';
+
+let $performanceWarned = false;
+
+function performanceWarning() {
+  if (!$performanceWarned) {
+    console.log('WARNING!!! GraphNode.evaluate isDirty flag usage is not optimal');
+  }
+  $performanceWarned = true;
+}
 
 /**
  * ZScript interpreter language node
@@ -15,7 +26,6 @@ export class GraphNode {
     // if(!model) {
     //   throw new Error('Error constructing language node without a model.');
     // }
-
 
     // The model we're wrapping; generally some sort of language element
     // created by FunctionService.
@@ -32,11 +42,6 @@ export class GraphNode {
 
     // Do we need publishers?
     // this.$publishers = new Set();
-  }
-
-  $buildGraph() {
-    // TODO Finish implementing; is this necessary anymore?
-    this.$isGraphBuilt = true;
   }
 
   /*
@@ -56,7 +61,6 @@ export class GraphNode {
 
     if (this.$model) {
       if (typeof this.$model === 'symbol') {
-        console.log(env);
         this.$model = getEnv(env, this.$model);
       }
       switch (typeof this.$model) {
@@ -65,7 +69,7 @@ export class GraphNode {
           // a direct manipulation of this node.
           break;
         default:
-          console.log(typeof this.$model);
+          // TODO Subsribe to elements in an Array
           this.$model.subscribe(this, env);
           // this.$publishers.add(this.$model);
           break;
@@ -74,80 +78,39 @@ export class GraphNode {
   }
 
   set(value) {
-    // TODO Notify subscribers
     this.$model = value;
     this.$oldValue = value;
     this.setDirty();
   }
 
-  evaluate_old(env, args) {
-    // TODO If $model is a FunctionDefinition (shouldn't it always be?)
-    // check to see if the args are dirty / different since the last evaluate,
-    // essentially memoizing this evaluation.
-
-    // TODO Handle other class types
-    if (this.$model.constructor.name !== 'FunctionDefinition') {
-      // Delegate to $model
-      return this.$model.evaluate.apply(this.$model, arguments);
-    }
-    if (this.$model.constructor.name !== 'FunctionCall') {
-      // Delegate to $model
-      return this.$model.evaluate.apply(this.$model, arguments);
-    }
-
-    throw new Error(`Node.evaluate cannot handle ${this.$model.constructor.name}`);
-  }
-
   evaluate(env, args) {
+    // TODO distinguish between evaluating a subscription vs a procedure
+    // subscriptions should set isDirty = false, but procedures ignore
+    // isDirty (or fix the memoization)
+    performanceWarning();
+    this.$isDirty = true;
+
     if (this.$isDirty) {
       // Don't re-evaluate
+
       // TODO distinguish between evaluating a subscription vs a procedure
       // subscriptions should set isDirty = false, but procedures ignore
-      // isDirty
+      // isDirty (or fix the memoization)
       this.$isDirty = true;
 
-      // Evaluate to determine new value?
-      switch (typeof this.$model) {
-        case 'undefined':
-          break;
-        case 'number':
-          this.$oldValue = this.$model;
-          break;
-        case 'object':
-          switch (this.$model.constructor.name) {
-            case 'FunctionCall':
-              console.log('GraphNode.FunctionCall evaluation');
-              this.$oldValue = this.$model.evaluate(env, args);
-              break;
-            case 'GraphNode':
-              // Why is a GraphNode a model?
-              this.$oldValue = this.$model.evaluate(env, args);
-              break;
-            case 'FunctionDefinition':
-              // FunctionDefintion are always dirty
-              this.$isDirty = true;
-              this.$oldValue = this.$model.evaluate(env, args);
-              break;
-            default:
-              throw new Error(`What type is this model object? ${this.$model.constructor.name}`);
-          }
-          break;
-        case 'symbol':
-          console.log('Getting symbol');
-          this.$oldValue = getEnv(env, this.$model);
-          break;
-        default:
-          throw new Error(`What type is this model? ${typeof this.$model}`);
-      }
+      let evaluator = new ScriptEvaluator(env);
+      this.$oldValue = evaluator.evalCompiledScript(this.$model, args);
     }
 
     return this.$oldValue;
   }
 
+  /**
+   * Notify subscribers that this value represented by this GraphNode 
+   * has changed.
+   */
   notify(details) {
     var that = this;
-    console.log('GraphNode.notify');
-    console.log(this);
 
     that.$subscribers.forEach((subscriber) => {
       if (subscriber.constructor.name === 'GraphNode') {
@@ -159,6 +122,8 @@ export class GraphNode {
 
         // Evaluate
         // TODO Is this the correct environment?
+        // TODO Push this outside of the forEach loop so that evaluate() is
+        // lazily called once.
         var newValue = that.evaluate(that.$env);
 
         // If the value changed, notify the subscriber
@@ -170,7 +135,6 @@ export class GraphNode {
             // event: details.event
           };
 
-          console.log('Calling callback function');
           subscriber(newValue, newDetails);
         }
       }
@@ -181,19 +145,23 @@ export class GraphNode {
 
   publish(value, details) {
     // TODO Make sure not overwriting a model that is an AST
-
-    console.log(`GraphNode.publish ${value}, ${details}`);
-    console.log(this);
     if (this.$oldValue !== value) {
       this.$oldValue = value;
       this.$model = value;
+      
       // Deep dirty 
       this.setDirty(this);
+      
       // Notify need for publication
       this.notify(details);
     }
+    return this;
   }
 
+  /**
+   * Mark this GraphNode and all of it's subscribers as dirty so that evaluate
+   * will re-evaluate.
+   */
   setDirty(notifier) {
     // If already marked dirty, don't bother doing it again.
     if (this.$isDirty) {
@@ -203,12 +171,9 @@ export class GraphNode {
     that.$isDirty = true;
     that.$subscribers.forEach((subscriber) => {
       if (subscriber.constructor.name === 'GraphNode') {
-        // console.log(`Setting ${subscriber.constructor.name} dirty`);
-        // console.log(subscriber);
         subscriber.setDirty(that);
       }
     });
-
   }
 
   getSubscribersAsArray() {

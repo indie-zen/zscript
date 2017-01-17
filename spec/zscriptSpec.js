@@ -1,4 +1,4 @@
-/*global zscript beforeAll expect fit fdefine*/
+/*global zscript beforeAll expect fit fdefine spyOn*/
 
 /**
  * Complete end to end tests for ZScript
@@ -36,8 +36,8 @@ describe('zscript', function() {
 
   });
 
-  describe('loadScript', function () {
-    xit('defines a function calling a function using a function call as an argument', function () {
+  describe('loadScript', function() {
+    it('defines a function calling a function using a function call as an argument', function() {
       zs.loadScript(`
 (def test
   (func [x y z]
@@ -45,21 +45,50 @@ describe('zscript', function() {
       `);
 
       var test = zs.env.get('test');
-      
-      console.log('test is');
-      console.log(test);
+      // console.log('test is');
+      // console.log(test);
+      // console.log('The $model.body of test is');
+      // console.log(test.$model.body);
+      // console.log('This  should be a function call to (+ x y)');
+      var innerFuncCall = test.$model.body.$model.args[0].$model;
+      // console.log(innerFuncCall);
+      expect(innerFuncCall.constructor.name).toBe('FunctionCall');
+      expect(innerFuncCall.name).toBe(Symbol.for('+'));
+      expect(innerFuncCall.args[0].$model).toBe(Symbol.for('x'));
+      expect(innerFuncCall.args[1].$model).toBe(Symbol.for('y'));
+    });
 
-      console.log('The model.body of test is');
-      console.log(test.$model.body);
+    it('defines a function that uses positional destructuring', function() {
+      zs.loadScript(`
+;;; Positional destructuring
+(def sum_of_list_of_two
+  (func
+    [[a b]]
+      (+ a b)))
+    `);
+      var func = zs.env.get('sum_of_list_of_two').$model;
+      expect(func.constructor.name).toBe('FunctionDefinition');
+      // console.log(func);
 
-      // FIXME implement tests to verify the AST; 
-      // The AST for test is wrong and causes the last expect() in this test 
-      // to fail.
-      
-      // This does not work; need to fix the AST
-      expect(zs.evaluate('(test 1 2 3)')[0][0]).toBe(3);
-    })
-  })
+      // TODO Finish
+    });
+
+    it('defines a function call that passes a vector as an argument', function() {
+      zs.loadScript(`
+;;; Array as an argument
+(def test
+  (func [x y]
+    (sum_of_list_of_two [x y])))
+    `);
+      var funcCall = zs.env.get('test').$model.body.$model;
+      var arg = funcCall.args[0].$model;
+      // console.log(arg);
+      expect(zscript.types.getType(arg)).toBe('vector');
+      expect(arg[0].$model).toBe(Symbol.for('x'));
+      expect(arg[1].$model).toBe(Symbol.for('y'));
+    });
+
+  });
 
   describe('evaluate', function() {
     it('evaluates function call', function() {
@@ -77,22 +106,11 @@ describe('zscript', function() {
       var response = zs.evaluate('(test)'),
         responses = response[0],
         childEnv = response[1];
-      console.log(responses);
+      // console.log(responses);
       expect(responses[0]).toBe(2);
     });
 
-    fit('evaluates a function that takes arguments', function() {
-      zs.loadScript(`
-(def sum
-  (func [x y]
-    (+ x y)))
-    `);
-
-      expect(zs.evaluate('(sum 1 2)')[0][0]).toBe(3);
-      expect(zs.evaluate('(sum 11 13)')[0][0]).toBe(24);
-    });
-
-    xit('evaluates function call with extra unused parameters', function() {
+    it('evaluates function call with extra unused parameters', function() {
       zs.loadScript(`
 ;;; Simple lambda function
 (def lambda2
@@ -107,7 +125,7 @@ describe('zscript', function() {
       var response = zs.evaluate('(test)'),
         responses = response[0],
         childEnv = response[1];
-      console.log(responses);
+      // console.log(responses);
       expect(responses[0]).toBe(2);
     });
 
@@ -127,7 +145,7 @@ describe('zscript', function() {
       expect(responses[1]).toBe(223);
     });
 
-    xit('evaluates two function calls that call other functions', function() {
+    it('evaluates two function calls that call other functions', function() {
       zs.loadScript(`
 ;;; Global function calling other functions
 (def add100
@@ -207,11 +225,21 @@ describe('zscript', function() {
   (func
     [[a b]]
       (+ a b)))
-      
+
 (def test
   (func [x y]
     (sum_of_list_of_two [x y])))
     `);
+      // console.log('Parsed positional destructuring.');
+      // console.log(zs.env.get('test'));
+
+      var funcCall = zs.env.get('test').$model.body.$model;
+      // console.log('Function call:');
+      // console.log(funcCall);
+
+      // console.log('Argument');
+      var args = funcCall.args[0].$model;
+      // console.log(args);
       expect(zs.evaluate('(test 1 2)')[0][0]).toBe(3);
     });
 
@@ -266,4 +294,5 @@ describe('zscript', function() {
     });
 
   });
+
 });

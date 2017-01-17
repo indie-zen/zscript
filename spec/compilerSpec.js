@@ -24,7 +24,15 @@ describe('compiler', function() {
         script = compileString(scriptString)[0];
         expect(script.constructor.name).toBe('GraphNode');
     });
+
+    it('constructs a function call with arguments', function () {
+      let script = compileString('(test 1 2)')[0];
+      expect(script.$model.constructor.name).toBe('FunctionCall');
+      expect(script.$model.args[0].$model).toBe(1);
+      expect(script.$model.args[1].$model).toBe(2);
+    });
+
   });
-  
+
   
 });

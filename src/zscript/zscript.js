@@ -63,24 +63,10 @@ export class Context {
    * 
    * @param {string} symbol used to identify the publisher.
    * @param {any} optional value to be published initially
-   * @returns {EventSink} event sink that can be used to publish new values
+   * @returns {GraphNode} GraphNode that can be used to publish new values
    */
   publishValue(symbol, initialValue) {
-    var sink;
-    // If the symbol already exists, publish a new value
-    if (this.valueSinks.has(symbol)) {
-      sink = this.valueSinks.get(symbol);
-    }
-    else {
-      sink = new compiler.EventSink();
-      this.valueSinks.set(symbol, sink);
-    }
-
-    if (!initialValue === undefined) {
-      sink.publish(initialValue);
-    }
-
-    return sink;
+    return this.def(symbol).publish(initialValue);
   }
 
   /**
