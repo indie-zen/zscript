@@ -52,29 +52,19 @@ describe('zscript pub/sub', function() {
       // subscribed by callback() function
 
       // First level is (x) function call
-      // console.log('First level subscription:');
       var sub0 = subs[0];
-      // console.log(sub0);
 
       // Second level is the lambda function definition (func [] (x))
-      // console.log('Second level subscription:');
       var sub1 = sub0.getSubscribersAsArray()[0];
-      // console.log(sub1);
 
       // Third level is the (test) function call
-      // console.log('Third level subscription:');
       var sub2 = sub1.getSubscribersAsArray()[0];
-      // console.log(sub2);
       expect(sub2.$model.name).toBe(Symbol.for('test'));
 
       // Fourth level is the zs.subscribe callback
-      // console.log('Fourth level subscription:');
       var sub3 = sub2.getSubscribersAsArray()[0];
-      // console.log(sub3);
 
       expect(sub3).toBe(callback);
-
-      // console.log(x);
     })
 
     it('can subscribe to a function call with arguments', function() {
@@ -100,9 +90,7 @@ describe('zscript pub/sub', function() {
         depth = 1;
 
       function nextDeeperSubscription(description) {
-        // console.log(`Subscription level: ${depth} - ${description}`);
         sub = sub.getSubscribersAsArray()[0];
-        // console.log(sub);
         depth = depth + 1;
       }
 
@@ -134,15 +122,12 @@ describe('zscript pub/sub', function() {
     }
     zs.subscribe('(test)', callback);
 
-    // FIXME this causes a stack overflow because of a circular reference;
     x.publish(13);
-    // console.log('After publish');
-    // console.log(x);
 
     // Expect to get the initial value
     expect(listener).toHaveBeenCalledWith(14);
     expect(listener.calls.count()).toEqual(1);
-    
+
     x.publish(33);
     expect(listener).toHaveBeenCalledWith(34);
     expect(listener.calls.count()).toEqual(2);
@@ -164,7 +149,7 @@ describe('zscript pub/sub', function() {
     `);
 
     zs.subscribe('(test)', listener);
-    
+
     // Expect to get called with the initial value
     expect(listener).toHaveBeenCalledWith(13);
     expect(listener.calls.count()).toEqual(1);
@@ -201,9 +186,13 @@ describe('zscript pub/sub', function() {
     // is called with the new value.
     var x = zs.def('x');
     zs.loadScript(`
+(def add
+  (func [a b]
+    (+ a b)))
+
 (def test
   (func []
-    (x)))
+    (add x 1)))
     `);
 
     function callback(newValue, details) {
@@ -213,22 +202,68 @@ describe('zscript pub/sub', function() {
     zs.subscribe('(test)', callback);
 
     x.publish(13);
-    expect(listener).toHaveBeenCalledWith(13);
+    expect(listener).toHaveBeenCalledWith(14);
     expect(listener.calls.count()).toEqual(1);
 
     x.publish(23);
-    expect(listener).toHaveBeenCalledWith(23);
+    expect(listener).toHaveBeenCalledWith(24);
     expect(listener.calls.count()).toEqual(2);
 
     x.publish(51);
-    expect(listener).toHaveBeenCalledWith(51);
+    expect(listener).toHaveBeenCalledWith(52);
     expect(listener.calls.count()).toEqual(3);
   });
 
-  // TODO Write a test that re-uses a function call and a function definition
-  // but with different values for arguments to make sure memoization doesn't
-  // interfere with isDirty subscription optimization
-  
+  it('does not publish a new value when an argument overrides a global', function() {
+    var listener = jasmine.createSpy('listener');
+
+    // Publish a new value; the returned listener is a function that
+    // is called with the new value.
+    var x = zs.def('x');
+    zs.loadScript(`
+(def add
+  (func [x y]
+    (+ x y)))
+    `);
+
+    function callback(newValue, details) {
+      return listener(newValue);
+    }
+
+    zs.subscribe('(add 1 2)', callback);
+
+    x.publish(13);
+    expect(listener.calls.count()).toEqual(0);
+  });
+
+  // TODO Need the equiv of this test in zscriptSpec as an evaluate test
+  it('does not mask global symbols when outer call uses same symbol', function() {
+    var listener = jasmine.createSpy('listener');
+
+    // Publish a new value; the returned listener is a function that
+    // is called with the new value.
+    var x = zs.def('x');
+    zs.loadScript(`
+(def add
+  (func [a b]
+    (+ a x)))
+
+(def test
+  (func [x y]
+    (add x y)))
+    `);
+
+    function callback(newValue, details) {
+      return listener(newValue);
+    }
+
+    zs.subscribe('(test 1 2)', callback);
+
+    x.publish(13);
+    expect(listener.calls.count()).toEqual(1);
+    expect(listener).toHaveBeenCalledWith(14);
+  });
+
   // TODO Write a test where a function definition uses a global symbol and
   // make sure when the global symbol is published, the function is
   // re-evaluated.

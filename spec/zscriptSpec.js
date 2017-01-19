@@ -186,7 +186,7 @@ describe('zscript', function() {
 (def sum
   (func [x y]
     (+ x y)))
-    
+
 (def test
   (func []
     (sum 1 2)))
@@ -285,12 +285,33 @@ describe('zscript', function() {
   (func
     []
       (func [] (+ 1 1))))
-      
+
 (def test
   (func []
     (lambda2 [x y])))
     `);
       expect(zs.evaluate('(test)')[0][0]).toEqual(2);
+    });
+
+    // Re-uses a function call and a function definition but with different 
+    // values for arguments to make sure memoization doesn't interfere with 
+    // isDirty subscription optimization
+    it('memoizes function calls properly', function() {
+      zs.loadScript(`
+(def add 
+  (func [x y]
+    (+ x y)))
+
+(def add3
+  (func [x y]
+    (add (+ 1 x) (+ y 2))))
+
+(def test
+  (func [x y]
+    (add3 x y)))
+    `);
+      expect(zs.evaluate('(test 3 5)')[0][0]).toBe(11);
+      expect(zs.evaluate('(test 11 13)')[0][0]).toBe(27);
     });
 
   });

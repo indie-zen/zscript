@@ -208,6 +208,7 @@ export class FunctionDefinition {
     // console.log(this.args);
     // console.log(args);
 
+    // Create a new environment to include arguments as local symbols
     var funcEnv = newEnv(env, this.args, args);
 
     var results = this.body.evaluate(funcEnv);
@@ -216,14 +217,27 @@ export class FunctionDefinition {
     return results;
   }
 
-  subscribe(node, env) {
-    // TODO Handle arguments
-    if(this.args.length !== 0) {
-      throw new Error('FunctionDefinition.subscribe cannot handle arguments yet.');
-    }
-    
+  subscribe(node, env, args) {
+    // Create a new environment to include arguments as local symbols
+    var funcEnv = newEnv(env, this.args, args);
+
+    // No need to subscribe to the arguments because the FunctionCall takes
+    // care of this for us.
+    // this.args.forEach((arg) => {
+    //   switch(typeof arg) {
+    //     case 'symbol':
+    //       // If the argument is a symbol, resolve it and subscribe to it.
+    //       getEnv(env, arg).subscribe(node, env);
+    //       break;
+    //     default:
+    //         console.log(`Subscribe to arg type ${typeof arg}`);
+    //         arg.subscribe(node, env);
+    //       break;
+    //   }
+    // });
+
     this.$graphNode = node;
-    this.body.subscribe(node, env);
+    this.body.subscribe(node, env, funcEnv);
     // console.log('FunctionDefinition.subscribe');
     // console.log(this.body);
   }
@@ -280,7 +294,7 @@ export class FunctionCall {
     this.args = args;
     // console.log(args);
   }
-  
+
   resolve(env) {
     // console.group(`Resolving function call to ${Symbol.keyFor(this.name)}`);
     // console.log('The original args are');
@@ -291,27 +305,27 @@ export class FunctionCall {
     return this;
   }
 
-  subscribe(node, env) {
+  subscribe(node, env, funcEnv) {
     this.$graphNode = node;
 
     var that = this;
-    
+
     that.args.map((arg) => {
       // console.log('Subscribing to arg');
       // console.log(arg);
-      arg.subscribe(node, env);
+      arg.subscribe(node, funcEnv);
     });
 
     // TODO Is this the correct environment?  If it is then it probably shouldn't be
     // private.
-    var func = that.definition ? that.definition : getEnv(node.$env, that.name);
+    var func = that.definition ? that.definition : getEnv(env, that.name);
 
     var bodyType = types.getType(func);
     // console.log(`FunctionCall.subscribe body type: ${bodyType}`);
 
-    switch(bodyType) {
+    switch (bodyType) {
       case 'GraphNode':
-        func.subscribe(node, env);
+        func.subscribe(node, env, that.args);
         break;
       case 'function':
         // Functions go off graph and should never get back on graph.
@@ -319,39 +333,6 @@ export class FunctionCall {
         break;
       default:
         throw new Error('FunctionCall.subscribe does not support subscribing to non GraphNode');
-    }
-  }
-
-  subscribe_old(listener, env) {
-    // TODO Properly handle environment
-    const evalEnv = env;
-    var that = this;
-    
-    // TODO subscribe to args
-    if(that.args.length !== 0) {
-      throw new Error('FunctionCall.subscribe does not support arguments yet.');
-    }
-    
-    var func = that.definition ? that.definition : getEnv(evalEnv, that.name);
-    var bodyType = types.getType(func);
-    // console.log(`FunctionCall.subscribe body type: ${bodyType}`);
-
-    if(bodyType === 'GraphNode') {
-      var previousEval;
-      func.subscribe( (newValue, details) => {
-        var newEval = that.evaluate(env);
-        if(newEval !== previousEval) {
-          var newDetails = {
-            oldValue: previousEval,
-            childEnv: env, // Should this be env or details.childEnv?
-            event: details.event
-          };
-          previousEval = newEval;
-          return listener(newEval, newDetails);
-        }
-      }, env);
-    } else {
-      throw new Error('FunctionCall.subscribe does not support subscribing to non GraphNode');
     }
   }
 
@@ -370,7 +351,7 @@ export class FunctionCall {
     }
     return evalEnv;
   }
-  
+
   resolveArgs(evalEnv) {
     var evaluator = new ScriptEvaluator(evalEnv);
     var args = evaluator.evalArray(this.args);
@@ -387,7 +368,7 @@ export class FunctionCall {
     // console.log(func);
 
     var args = this.resolveArgs(evalEnv);
-    
+
     // console.log('The original args are');
     // console.log(this.args);
     // console.log('The evaluated args are')
@@ -471,7 +452,7 @@ class DeferredSymbol {
 
     // TODO Don't assume the symbolFunc is a deref
     var deref = getEnv(env, this.symbolFunc.args[0])
-    // console.log(deref);
+      // console.log(deref);
     var newSym = types._symbol(Symbol.keyFor(this.namespace) + "." + Symbol.keyFor(deref));
     // console.log(newSym);
     // console.groupEnd();
@@ -496,10 +477,10 @@ function map_function(func, list, env) {
   // calls and/or function definitions (definitely the latter).
   // For now, assume the list is a list of symbols.
   var newFuncCalls = Array.from(list, arg => {
-    return functionService.createFunctionCall(env, func, arg).evaluate(env);
-  })
-  // console.log(newFuncCalls);
-  // console.groupEnd();
+      return functionService.createFunctionCall(env, func, arg).evaluate(env);
+    })
+    // console.log(newFuncCalls);
+    // console.groupEnd();
   return newFuncCalls;
 }
 

@@ -52,8 +52,10 @@ export class GraphNode {
    *        childEnv, // child environment where the script is executing
    *        event     // event that caused this result to change
    *    }
+   * @param {EnvironmentModel} env
+   * @param {list} args list of arguments coming from a FunctionCall
    */
-  subscribe(node, env) {
+  subscribe(node, env, args) {
     this.$subscribers.add(node);
 
     // TODO Keep this as the current environment?
@@ -70,7 +72,8 @@ export class GraphNode {
           break;
         default:
           // TODO Subsribe to elements in an Array
-          this.$model.subscribe(this, env);
+          // args is only needed by a FunctionDefinition (I think)
+          this.$model.subscribe(this, env, args);
           // this.$publishers.add(this.$model);
           break;
       }

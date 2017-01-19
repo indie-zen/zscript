@@ -53,7 +53,7 @@ describe('FunctionDefinition', function() {
         expect(funcCall.evaluate(env)).toBe(3);
       });
 
-      it('does not corrupt the outer environment', function () {
+      it('does not corrupt the outer environment', function() {
         zs.loadScript(`
 (def x 31)
 (def y 33)
