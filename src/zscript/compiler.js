@@ -1,6 +1,7 @@
 const core = require('./core.js');
 const types = require('./types.js');
 
+export const ScriptEvaluator = require('./evaluator').ScriptEvaluator;
 export const reader = require('./reader.js');
 
 require('console-group').install();
@@ -18,8 +19,16 @@ function compileAST(ast, env) {
   const astType = types.getType(ast);
   switch (astType) {
     case 'array':
+      // TODO Possibly need to wrap this Array with an AST object
+      // functionService.createArray( ... )
       return ast.map((x) => compileScript(x, env));
+    case 'vector':
+      const array = ast.map((x) => compileScript(x, env));
+      return new graph.GraphNode(types._vector(...array));
     default:
+      // console.log('Wrapping with a GraphNode');
+      // console.log(astType);
+      // console.log(ast);
       return new graph.GraphNode(ast);
   }
 }
@@ -70,13 +79,13 @@ export function compileScript(ast, env) {
       case 'def':
         var def = compileScript(a2, env);
         env[a1] = def;
-        console.log(`def ${Symbol.keyFor(a1)}`);
-        if (types.getType(def) === 'symbol') {
-          console.log(Symbol.keyFor(def));
-        }
-        else {
-          console.log(def);
-        }
+        // console.log(`def ${Symbol.keyFor(a1)}`);
+        // if (types.getType(def) === 'symbol') {
+        //   console.log(Symbol.keyFor(def));
+        // }
+        // else {
+        //   console.log(def);
+        // }
         return a1;
         // Define a new function
       case 'func':
@@ -100,8 +109,8 @@ export function compileScript(ast, env) {
         return null;
       case 'eval':
         var funcCall = compileScript(a1);
-        console.log('Evaluating');
-        console.log(funcCall);
+        // console.log('Evaluating');
+        // console.log(funcCall);
         return null;
       case 'using':
         console.log('Using:');
@@ -127,24 +136,24 @@ export function compileScript(ast, env) {
         var symbols = Object.getOwnPropertySymbols(a1);
         symbols.forEach(sym => {
           var newValue = compileScript(a1[sym], env);
-          console.log("Setting namespace value")
-          console.log(sym);
-          console.log(a1[sym]);
-          console.log(newValue);
+          // console.log("Setting namespace value")
+          // console.log(sym);
+          // console.log(a1[sym]);
+          // console.log(newValue);
           a1[sym] = newValue;
-          console.log('-----')
+          // console.log('-----')
         })
         return a1;
       case 'map':
-        console.log('creating map');
-        console.log(a1);
-        console.log(a2);
+        // console.log('creating map');
+        // console.log(a1);
+        // console.log(a2);
         return functionService.createMap(a1, a2);
       default:
         if (types.getType(a0) === "array") {
           var newA0 = compileScript(a0, env);
-          console.log("New a0");
-          console.log(newA0);
+          // console.log("New a0");
+          // console.log(newA0);
           a0 = newA0;
         }
         // console.log("Default compileScript handler");
@@ -192,31 +201,45 @@ export class FunctionDefinition {
   }
 
   evaluate(env, args) {
-    console.group('Evaluating function definition');
+    // console.group('Evaluating function definition');
 
     // For now assume a function definition is nothing more than a function call
-    console.log(this.body);
-    console.log(this.args);
-    console.log(args);
+    // console.log(this.body);
+    // console.log(this.args);
+    // console.log(args);
 
+    // Create a new environment to include arguments as local symbols
     var funcEnv = newEnv(env, this.args, args);
 
     var results = this.body.evaluate(funcEnv);
-    console.log(results);
-    console.groupEnd();
+    // console.log(results);
+    // console.groupEnd();
     return results;
   }
 
-  subscribe(node, env) {
-    // TODO Handle arguments
-    if(this.args.length !== 0) {
-      throw new Error('FunctionDefinition.subscribe cannot handle arguments yet.');
-    }
-    
+  subscribe(node, env, args) {
+    // Create a new environment to include arguments as local symbols
+    var funcEnv = newEnv(env, this.args, args);
+
+    // No need to subscribe to the arguments because the FunctionCall takes
+    // care of this for us.
+    // this.args.forEach((arg) => {
+    //   switch(typeof arg) {
+    //     case 'symbol':
+    //       // If the argument is a symbol, resolve it and subscribe to it.
+    //       getEnv(env, arg).subscribe(node, env);
+    //       break;
+    //     default:
+    //         console.log(`Subscribe to arg type ${typeof arg}`);
+    //         arg.subscribe(node, env);
+    //       break;
+    //   }
+    // });
+
     this.$graphNode = node;
-    this.body.subscribe(node, env);
-    console.log('FunctionDefinition.subscribe');
-    console.log(this.body);
+    this.body.subscribe(node, env, funcEnv);
+    // console.log('FunctionDefinition.subscribe');
+    // console.log(this.body);
   }
 }
 
@@ -230,9 +253,9 @@ class ScriptResolver {
   }
 
   resolveCompiledScript(script) {
-    console.group('in ScriptResolver.resolveCompiledScript');
-    console.log(types.getType(script));
-    console.log(script);
+    // console.group('in ScriptResolver.resolveCompiledScript');
+    // console.log(types.getType(script));
+    // console.log(script);
     var results = script;
     switch (types.getType(script)) {
       case 'array':
@@ -240,7 +263,6 @@ class ScriptResolver {
         const [sym, ...args] = script;
         var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
         results = funcCall.resolve(this.env);
-        console.groupEnd();
         break;
       case 'vector':
         var resolver = new ScriptResolver(this.env);
@@ -248,76 +270,7 @@ class ScriptResolver {
         results.__isvector__ = true;
         break;
     }
-    console.groupEnd();
-    return results;
-  }
-}
-
-class ScriptEvaluator {
-  constructor(env) {
-    this.env = env;
-  }
-
-  evalArray(array) {
-    return Array.from(array, this.evalCompiledScript, this);
-  }
-
-  evalCompiledScript(script) {
-    console.group('in ScriptEvaluator.evalCompiledScript');
-    console.log(script);
-    var results = null;
-
-    //console.log(this.env);
-    //console.log(types.getType(script));
-    switch (types.getType(script)) {
-      case 'array':
-        // An array is a function call where the first value in the array
-        // is the symbol of the function to be called, and the rest of
-        // the array is a list of arguments.  This SHOULD already have
-        // been compiled, but it wasn't!
-        // FIXME This SHOULD have already been compiled during the compile
-        // step; why wasn't it? (see compileScript default behavior; I think
-        // that's why this isn't compiled yet)
-        console.group('Creating and then calling function');
-        const [sym, ...args] = script;
-        var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
-        results = funcCall.evaluate(this.env);
-        console.groupEnd();
-        break;
-      case 'vector':
-        results = Array.from(script, this.evalCompiledScript, this);
-        results.__isvector__ = true;
-        break;
-      case 'symbol':
-        console.group('Getting symbol');
-        console.log(script);
-        var value = getEnv(this.env, script, true);
-        // If the symbol wasn't found, just return the symbol.
-        if (value === null) {
-          results = script;
-        }
-        else {
-          console.log(value);
-          results = this.evalCompiledScript(value);
-        }
-        console.groupEnd();
-        break;
-      case 'function':
-        throw new Error("evalCompiledScript: function; how did we get here?");
-      case 'GraphNode':
-      case 'FunctionCall':
-      case 'FunctionDefinition':
-      case 'object':
-        console.log(`evalCompiledScript of type ${types.getType(script)}`);
-        results = script.evaluate(this.env);
-        break;
-      default:
-        results = script;
-        break;
-    }
-
-    console.log(results);
-    console.groupEnd();
+    // console.groupEnd();
     return results;
   }
 }
@@ -341,38 +294,38 @@ export class FunctionCall {
     this.args = args;
     // console.log(args);
   }
-  
+
   resolve(env) {
-    console.group(`Resolving function call to ${Symbol.keyFor(this.name)}`);
-    console.log('The original args are');
-    console.log(this.args);
+    // console.group(`Resolving function call to ${Symbol.keyFor(this.name)}`);
+    // console.log('The original args are');
+    // console.log(this.args);
     var resolver = new ScriptResolver(env);
     this.args = resolver.resolveArray(this.args);
-    console.groupEnd();
+    // console.groupEnd();
     return this;
   }
 
-  subscribe(node, env) {
+  subscribe(node, env, funcEnv) {
     this.$graphNode = node;
 
     var that = this;
-    
+
     that.args.map((arg) => {
-      console.log('Subscribing to arg');
-      console.log(arg);
-      arg.subscribe(node, env);
+      // console.log('Subscribing to arg');
+      // console.log(arg);
+      arg.subscribe(node, funcEnv);
     });
 
     // TODO Is this the correct environment?  If it is then it probably shouldn't be
     // private.
-    var func = that.definition ? that.definition : getEnv(node.$env, that.name);
+    var func = that.definition ? that.definition : getEnv(env, that.name);
 
     var bodyType = types.getType(func);
-    console.log(`FunctionCall.subscribe body type: ${bodyType}`);
+    // console.log(`FunctionCall.subscribe body type: ${bodyType}`);
 
-    switch(bodyType) {
+    switch (bodyType) {
       case 'GraphNode':
-        func.subscribe(node, env);
+        func.subscribe(node, env, that.args);
         break;
       case 'function':
         // Functions go off graph and should never get back on graph.
@@ -383,43 +336,11 @@ export class FunctionCall {
     }
   }
 
-  subscribe_old(listener, env) {
-    // TODO Properly handle environment
-    const evalEnv = env;
-    var that = this;
-    
-    // TODO subscribe to args
-    if(that.args.length !== 0) {
-      throw new Error('FunctionCall.subscribe does not support arguments yet.');
-    }
-    
-    var func = that.definition ? that.definition : getEnv(evalEnv, that.name);
-    var bodyType = types.getType(func);
-    console.log(`FunctionCall.subscribe body type: ${bodyType}`);
-
-    if(bodyType === 'GraphNode') {
-      var previousEval;
-      func.subscribe( (newValue, details) => {
-        var newEval = that.evaluate(env);
-        if(newEval !== previousEval) {
-          var newDetails = {
-            oldValue: previousEval,
-            childEnv: env, // Should this be env or details.childEnv?
-            event: details.event
-          };
-          previousEval = newEval;
-          return listener(newEval, newDetails);
-        }
-      }, env);
-    } else {
-      throw new Error('FunctionCall.subscribe does not support subscribing to non GraphNode');
-    }
-  }
-
-  evaluate(env) {
-    console.group(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
-    var results = null;
-
+  /**
+   * Create an environment by merging the namespace environment
+   * with the argument environment.
+   */
+  getEvalEnv(env) {
     // Create an environment by merging the namespace environment
     // with the argument environment.
     var evalEnv = newEnv(this.env);
@@ -428,35 +349,50 @@ export class FunctionCall {
     for (var symbol of Object.getOwnPropertySymbols(env)) {
       setEnv(evalEnv, symbol, getEnv(env, symbol));
     }
+    return evalEnv;
+  }
 
-    var func = this.definition ? this.definition : getEnv(evalEnv, this.name);
-    console.log(func);
+  resolveArgs(evalEnv) {
     var evaluator = new ScriptEvaluator(evalEnv);
     var args = evaluator.evalArray(this.args);
-    console.log('The original args are');
-    console.log(this.args);
-    console.log('The evaluated args are')
-    console.log(args);
+    return args;
+  }
+
+  evaluate(env) {
+    // console.group(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
+    var results = null;
+
+    var evalEnv = this.getEvalEnv(env);
+
+    var func = this.definition ? this.definition : getEnv(evalEnv, this.name);
+    // console.log(func);
+
+    var args = this.resolveArgs(evalEnv);
+
+    // console.log('The original args are');
+    // console.log(this.args);
+    // console.log('The evaluated args are')
+    // console.log(args);
     switch (types.getType(func)) {
       case 'function':
-        console.log('Calling function');
-        console.log(func);
+        // console.log('Calling function');
+        // console.log(func);
         results = func(...args, evalEnv);
         break;
       case 'GraphNode':
       case 'FunctionCall':
       case 'object':
         // Assume it's a function call.
-        console.log(`Evaluating call to ${types.getType(func)}; is this a FunctionCall or a GraphNode?`);
+        // console.log(`Evaluating call to ${types.getType(func)}; is this a FunctionCall or a GraphNode?`);
         results = func.evaluate(evalEnv, args);
         break;
       default:
-        console.log("Calling function of type");
-        console.log(types.getType(func));
+        // console.log("Calling function of type");
+        // console.log(types.getType(func));
         throw new Error(`Function type is not supported: ${types.getType(func)}`);
     }
-    console.log(results);
-    console.groupEnd();
+    // console.log(results);
+    // console.groupEnd();
     return results;
   }
 }
@@ -473,11 +409,11 @@ class MapHandler {
     const listOfValues = evaluator.evalCompiledScript(this.listOfValues);
     var results = Array.from(listOfValues, value =>
       functionService.createFunctionCall(env, this.symbol, value).evaluate(env));
-    console.log('MapHandler::evaluate');
-    console.log(this.symbol);
-    console.log(this.listOfValues);
-    console.log(listOfValues);
-    console.log(results);
+    // console.log('MapHandler::evaluate');
+    // console.log(this.symbol);
+    // console.log(this.listOfValues);
+    // console.log(listOfValues);
+    // console.log(results);
     return results;
   }
 }
@@ -510,16 +446,16 @@ class DeferredSymbol {
    * @return symbol derived from the namespace + symbolFunc()
    */
   evaluate(env) {
-    console.group("Evaluating DeferredSymbol");
-    console.log(this.namespace);
-    console.log(this.symbolFunc);
+    // console.group("Evaluating DeferredSymbol");
+    // console.log(this.namespace);
+    // console.log(this.symbolFunc);
 
     // TODO Don't assume the symbolFunc is a deref
     var deref = getEnv(env, this.symbolFunc.args[0])
-    console.log(deref);
+      // console.log(deref);
     var newSym = types._symbol(Symbol.keyFor(this.namespace) + "." + Symbol.keyFor(deref));
-    console.log(newSym);
-    console.groupEnd();
+    // console.log(newSym);
+    // console.groupEnd();
     return newSym;
   }
 }
@@ -532,31 +468,31 @@ export var globalEnv = newEnv();
 // Compiler namespace functions are defined here
 
 function map_function(func, list, env) {
-  console.group('In funcion map_function');
-  console.log(func);
-  console.log(list);
+  // console.group('In funcion map_function');
+  // console.log(func);
+  // console.log(list);
 
   // FIXME Don't assume that the list is a list of symbols;
   // I think the list may include some elements that are function
   // calls and/or function definitions (definitely the latter).
   // For now, assume the list is a list of symbols.
   var newFuncCalls = Array.from(list, arg => {
-    return functionService.createFunctionCall(env, func, arg).evaluate(env);
-  })
-  console.log(newFuncCalls);
-  console.groupEnd();
+      return functionService.createFunctionCall(env, func, arg).evaluate(env);
+    })
+    // console.log(newFuncCalls);
+    // console.groupEnd();
   return newFuncCalls;
 }
 
 function call_function(symbol, args, env) {
-  console.group('call_function');
-  console.log(symbol);
-  console.log(args);
+  // console.group('call_function');
+  // console.log(symbol);
+  // console.log(args);
   var evaluator = new ScriptEvaluator(env);
   var results = evaluator.evalCompiledScript([symbol, args]);
-  console.log('Results from call_function');
-  console.log(results);
-  console.groupEnd();
+  // console.log('Results from call_function');
+  // console.log(results);
+  // console.groupEnd();
   return results;
 }
 

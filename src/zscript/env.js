@@ -94,19 +94,19 @@ export const getEnv = (env, sym, ignoreNotFound=false) => {
         if(symbols.length > 0) {
           var value = env;
           for(var x = 0; x < symbols.length; x++) {
-            console.log("Looking for symbol " + symbols[x]);
+            // console.log("Looking for symbol " + symbols[x]);
             if(types._symbol(symbols[x]) in value) {
               value = value[types._symbol(symbols[x])];
             } else {
                 if (ignoreNotFound) {
                   return null;
                 }
-                console.log(value);
+                // console.log(value);
                 throw Error(`'${symbols[x]}' not found`);
             }
           }
-          console.log(`fqn ${symText} resulted in`);
-          console.log(value);
+          // console.log(`fqn ${symText} resulted in`);
+          // console.log(value);
           return value;
         }
         throw Error(`'${Symbol.keyFor(sym)}' not found`);

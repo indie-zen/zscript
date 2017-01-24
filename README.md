@@ -2,9 +2,9 @@
 
 Scripting language for Meta Zen, Zen Spaces.
 
-## Unstable
+## Stable
 
-I'm currently developing in the "master" branch; my last commit is unstable;
+I'm currently developing in the "master" branch.  This commit is stable.
 
 ## Building the Code
 

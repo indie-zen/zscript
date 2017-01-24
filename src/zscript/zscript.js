@@ -19,8 +19,6 @@ export class Context {
   constructor(rawEnv) {
     this.env = new env.Environment(rawEnv);
     compiler.add_globals(this.$getEnvModel());
-    
-    console.log(`Constructed env ${this.env} with model ${this.env.$model}`);
     this.valueSinks = new Map();
   }
 
@@ -53,7 +51,6 @@ export class Context {
    */
   loadScript(scriptString, env) {
     env = this.$getEnvModel(env);
-    console.log(`Loading script into ${env}`);
     var tokens = compiler.reader.tokenize(scriptString);
     while (!tokens.isDone()) {
       var ast = compiler.reader.readNextExpression(tokens);
@@ -66,24 +63,10 @@ export class Context {
    * 
    * @param {string} symbol used to identify the publisher.
    * @param {any} optional value to be published initially
-   * @returns {EventSink} event sink that can be used to publish new values
+   * @returns {GraphNode} GraphNode that can be used to publish new values
    */
   publishValue(symbol, initialValue) {
-    var sink;
-    // If the symbol already exists, publish a new value
-    if (this.valueSinks.has(symbol)) {
-      sink = this.valueSinks.get(symbol);
-    }
-    else {
-      sink = new compiler.EventSink();
-      this.valueSinks.set(symbol, sink);
-    }
-
-    if (!initialValue === undefined) {
-      sink.publish(initialValue);
-    }
-
-    return sink;
+    return this.def(symbol).publish(initialValue);
   }
 
   /**
@@ -165,7 +148,7 @@ export class Context {
       script.subscribe(listener, childEnv);
     });
   }
-  
+
   // old implementation
   subscribe_old(symbol, listener, env) {
     var node;
