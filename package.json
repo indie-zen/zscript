@@ -1,13 +1,13 @@
 {
-  "name": "metazen-bootstrap",
-  "version": "0.0.1",
-  "description": "Bootstrap for Meta Zen",
+  "name": "zscript",
+  "version": "0.0.2",
+  "description": "Zen Meta Scripting Language",
   "keywords": [
     "metazen",
     "zenspaces"
   ],
   "homepage": "meta.indiezen.org",
-  "author": "Tony Richards <linterra@gmail.com> (http://indiezen.com)",
+  "author": "Raymond A. Richards <linterra@gmail.com> (http://indiezen.com)",
   "devDependencies": {
     "babel-plugin-transform-class-properties": "^6.0.0",
     "babel-plugin-transform-decorators-legacy": "^1.0.0",

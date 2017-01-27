@@ -5,7 +5,12 @@ export const slurp = core.slurp;
 export const compiler = require('./compiler.js');
 export const env = require('./env.js');
 
-
+import {
+  newEnv,
+  setEnv,
+  getEnv
+}
+from './env.js';
 
 /**
  * Context presents a nice facade around the strange mix of procedural and
@@ -56,6 +61,23 @@ export class Context {
       var ast = compiler.reader.readNextExpression(tokens);
       compiler.compileScript(ast, env);
     }
+  }
+
+  /**
+   * Load an external ZScript using a package / filename.
+   * 
+   * @param {string} symbol that is to be used to store the exported symbols
+   * @param {string} fileName file name or package name to load
+   * @param {Environment} env optional environment to use for symbols; 
+   *  if not specified then use the global environment for this context.
+   */
+  require(symbol, fileName, env) {
+    env = this.$getEnvModel(env);
+    fileName = core.find_package(fileName);
+    let loadEnv = newEnv();
+    compiler.add_globals(loadEnv);
+    compiler.loadFile(fileName, loadEnv);
+    setEnv(env, Symbol.for(symbol), loadEnv);
   }
 
   /**
@@ -147,22 +169,5 @@ export class Context {
       }
       script.subscribe(listener, childEnv);
     });
-  }
-
-  // old implementation
-  subscribe_old(symbol, listener, env) {
-    var node;
-    if (typeof symbol === 'object' && symbol.cconstructor.name === 'Node') {
-      node = symbol;
-    }
-    else {
-      node = this.getEnv(env).get(symbol);
-
-      if (node.constructor.name !== 'Node') {
-        throw new Error(`Context.subsccribe must specify a Node or a symbol that represents a node; found ${node.constructor.name} instead`);
-      }
-    }
-
-    return node.subscribe(listener);
   }
 }
