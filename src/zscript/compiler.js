@@ -1,3 +1,4 @@
+// @flow
 const core = require('./core.js');
 const types = require('./types.js');
 
@@ -6,16 +7,17 @@ export const reader = require('./reader.js');
 
 require('console-group').install();
 
-import {
-  newEnv,
-  setEnv,
-  getEnv
-}
-from './env.js';
+// import {
+//   newEnv,
+//   setEnv,
+//   getEnv
+// }
+// from './env.js';
+import { Environment } from './env.js';
 
 export const graph = require('./graph.js');
 
-function compileAST(ast, env) {
+function compileAST(ast, env) : Array<graph.GraphNode> | graph.GraphNode {
   const astType = types.getType(ast);
   switch (astType) {
     case 'array':
@@ -34,16 +36,19 @@ function compileAST(ast, env) {
 }
 
 class FunctionService {
+  
+  funcs: Map<any, any>;
+  
   constructor() {
     this.funcs = new Map();
   }
 
-  createFunction(args, body) {
+  createFunction(args : Array<any>, body : graph.GraphNode) : graph.GraphNode  {
     const newFunc = new FunctionDefinition(args, body);
     return new graph.GraphNode(newFunc);
   }
 
-  createFunctionCall(env, name, ...args) {
+  createFunctionCall(env : Environment, name : symbol, ...args : Array<any>) {
     // TODO Need to track this?  Probably, to eventually determine
     // if all calls evaluate to a function that exists.
     const newFuncCall = new FunctionCall(env, name, ...args);
@@ -54,14 +59,14 @@ class FunctionService {
     return new MapHandler(symbol, list);
   }
 
-  createDeferredSymbol(env, namespace, symbolFunc) {
+  createDeferredSymbol(env : Environment, namespace : string, symbolFunc : graph.GraphNode) {
     return new DeferredSymbol(env, namespace, symbolFunc);
   }
 }
 
 export var functionService = new FunctionService();
 
-export function compileScript(ast, env) {
+export function compileScript(ast : Array<any>, env : Environment) : ?graph.GraphNode {
   while (true) {
     if (types.getType(ast) != 'array') {
       return compileAST(ast, env);
@@ -77,9 +82,10 @@ export function compileScript(ast, env) {
     switch (a0sym) {
       // Define a variable
       case 'def':
+        console.log(`def ${Symbol.keyFor(a1)}`);
         var def = compileScript(a2, env);
-        env[a1] = def;
-        // console.log(`def ${Symbol.keyFor(a1)}`);
+        env.set(a1, def);
+        console.log(env.toString());
         // if (types.getType(def) === 'symbol') {
         //   console.log(Symbol.keyFor(def));
         // }
@@ -102,10 +108,10 @@ export function compileScript(ast, env) {
         // console.log(an);
         // Find the name of the file (or eventually other package source)
         var fileName = core.find_package(a2);
-        var loadEnv = newEnv();
+        var loadEnv = new Environment();
         add_globals(loadEnv);
         loadFile(fileName, loadEnv);
-        setEnv(env, a1, loadEnv);
+        env.set(env, a1, loadEnv);
         return null;
       case 'eval':
         var funcCall = compileScript(a1);
@@ -167,7 +173,7 @@ export function compileScript(ast, env) {
   }
 }
 
-export function loadFile(fileName, env) {
+export function loadFile(fileName : string, env : Environment) {
   // TODO Don't re-load a file that's already been loaded.
   var loadedFile = core.slurp(fileName);
   var tokens = reader.tokenize(loadedFile);
@@ -177,8 +183,8 @@ export function loadFile(fileName, env) {
   }
 }
 
-export function compileString(scriptString, env) {
-  env = env || newEnv();
+export function compileString(scriptString : string, env : Environment) {
+  env = env || new Environment();
   var tokens = reader.tokenize(scriptString),
     scripts = [];
 
@@ -195,35 +201,48 @@ export function compileString(scriptString, env) {
 // FunctionCall
 
 export class FunctionDefinition {
-  constructor(args, body) {
-    this.args = args;
-    this.body = body;
+  $args : Array<any>;
+  $body : graph.GraphNode;
+  $graphNode : graph.GraphNode;
+  
+  constructor(args : Array<any>, body : graph.GraphNode) {
+    this.$args = args;
+    this.$body = body;
   }
 
-  evaluate(env, args) {
+  getBody() {
+    if (this.$body.constructor.name === 'GraphNode') {
+      return this.$body.$model;
+    }
+    else {
+      return this.$body;
+    }
+  }
+
+  evaluate(env : Environment, args : Array<any>) {
     // console.group('Evaluating function definition');
 
     // For now assume a function definition is nothing more than a function call
     // console.log(this.body);
-    // console.log(this.args);
+    // console.log(this.$args);
     // console.log(args);
 
     // Create a new environment to include arguments as local symbols
-    var funcEnv = newEnv(env, this.args, args);
+    var funcEnv = env.newEnv(this.$args, args);
 
-    var results = this.body.evaluate(funcEnv);
+    var results = this.$body.evaluate(funcEnv);
     // console.log(results);
     // console.groupEnd();
     return results;
   }
 
-  subscribe(node, env, args) {
+  subscribe(node : graph.GraphNode, env : Environment, args : Array<any>) {
     // Create a new environment to include arguments as local symbols
-    var funcEnv = newEnv(env, this.args, args);
+    var funcEnv = env.newEnv(this.$args, args);
 
     // No need to subscribe to the arguments because the FunctionCall takes
     // care of this for us.
-    // this.args.forEach((arg) => {
+    // this.$args.forEach((arg) => {
     //   switch(typeof arg) {
     //     case 'symbol':
     //       // If the argument is a symbol, resolve it and subscribe to it.
@@ -237,22 +256,24 @@ export class FunctionDefinition {
     // });
 
     this.$graphNode = node;
-    this.body.subscribe(node, env, funcEnv);
+    this.$body.subscribe(node, env, funcEnv);
     // console.log('FunctionDefinition.subscribe');
     // console.log(this.body);
   }
 }
 
 class ScriptResolver {
-  constructor(env) {
-    this.env = env;
+  $env : Environment;
+  
+  constructor(env : Environment) {
+    this.$env = env;
   }
 
-  resolveArray(array) {
+  resolveArray(array : Array<any>) : Array<any> {
     return Array.from(array, this.resolveCompiledScript, this);
   }
 
-  resolveCompiledScript(script) {
+  resolveCompiledScript(script : Array<any>) {
     // console.group('in ScriptResolver.resolveCompiledScript');
     // console.log(types.getType(script));
     // console.log(script);
@@ -261,12 +282,13 @@ class ScriptResolver {
       case 'array':
         // FIXME as with evalCompiledScript, this needs to be fixed
         const [sym, ...args] = script;
-        var funcCall = functionService.createFunctionCall(this.env, sym, ...args);
-        results = funcCall.resolve(this.env);
+        var funcCall = functionService.createFunctionCall(this.$env, sym, ...args);
+        results = funcCall.resolve(this.$env);
         break;
       case 'vector':
-        var resolver = new ScriptResolver(this.env);
+        var resolver = new ScriptResolver(this.$env);
         results = resolver.resolveArray(script);
+        // $FlowFixMe - using a hacky way to distinguish vectors from arrays
         results.__isvector__ = true;
         break;
     }
@@ -276,41 +298,59 @@ class ScriptResolver {
 }
 
 export class FunctionCall {
-  constructor(env, nameOrDef, ...args) {
+  $definition : ?FunctionDefinition;
+  $name : symbol;
+  $args: Array<any>;
+  $env: Environment;
+  $graphNode : graph.GraphNode;
+  
+  constructor(env : Environment, nameOrDef : FunctionDefinition|symbol, ...args : Array<any>) {
     if (types.getType(nameOrDef) === 'symbol') {
-      this.definition = null;
-      this.name = nameOrDef;
+      this.$definition = null;
+      // $FlowFixMe - flow is wrong; this is definitely a symbol here
+      this.$name = nameOrDef;
 
       // Environment created during the compile step
-      this.env = env;
+      this.$env = env;
       // console.log(`Call to function ${Symbol.keyFor(nameOrDef)} with args:`);
     }
     else {
-      this.name = types._symbol('<lambda>');
+      this.$name = types._symbol('<lambda>');
       // console.log('Call to lambda function');
       // console.log(nameOrDef);
-      this.definition = nameOrDef;
+      // $FlowFixMe - flow is wrong; this is definitely a FunctionDefinition here
+      this.$definition = nameOrDef;
     }
-    this.args = args;
+    this.$args = args;
     // console.log(args);
   }
 
-  resolve(env) {
+  getArg(n : number) : any {
+    let arg = this.$args[n];
+    if (arg.constructor.name === 'GraphNode') {
+      return arg.$model;
+    }
+    else {
+      return arg;
+    }
+  }
+
+  resolve(env : Environment) {
     // console.group(`Resolving function call to ${Symbol.keyFor(this.name)}`);
     // console.log('The original args are');
-    // console.log(this.args);
+    // console.log(this.$args);
     var resolver = new ScriptResolver(env);
-    this.args = resolver.resolveArray(this.args);
+    this.$args = resolver.resolveArray(this.$args);
     // console.groupEnd();
     return this;
   }
 
-  subscribe(node, env, funcEnv) {
+  subscribe(node : graph.GraphNode, env : Environment, funcEnv : Function) {
     this.$graphNode = node;
 
     var that = this;
 
-    that.args.map((arg) => {
+    that.$args.map((arg) => {
       // console.log('Subscribing to arg');
       // console.log(arg);
       arg.subscribe(node, funcEnv);
@@ -318,14 +358,14 @@ export class FunctionCall {
 
     // TODO Is this the correct environment?  If it is then it probably shouldn't be
     // private.
-    var func = that.definition ? that.definition : getEnv(env, that.name);
+    var func : any = that.$definition ? that.$definition : env.get(that.$name);
 
     var bodyType = types.getType(func);
     // console.log(`FunctionCall.subscribe body type: ${bodyType}`);
 
     switch (bodyType) {
       case 'GraphNode':
-        func.subscribe(node, env, that.args);
+        func.subscribe(node, env, that.$args);
         break;
       case 'function':
         // Functions go off graph and should never get back on graph.
@@ -340,37 +380,38 @@ export class FunctionCall {
    * Create an environment by merging the namespace environment
    * with the argument environment.
    */
-  getEvalEnv(env) {
+  getEvalEnv(env : Environment) {
     // Create an environment by merging the namespace environment
     // with the argument environment.
-    var evalEnv = newEnv(this.env);
+    var evalEnv = this.$env.newEnv();
     add_globals(evalEnv);
     // Overlay with symbols from function call
     for (var symbol of Object.getOwnPropertySymbols(env)) {
-      setEnv(evalEnv, symbol, getEnv(env, symbol));
+      evalEnv.set(symbol, env.get(symbol));
     }
     return evalEnv;
   }
 
-  resolveArgs(evalEnv) {
+  resolveArgs(evalEnv : Environment) {
     var evaluator = new ScriptEvaluator(evalEnv);
-    var args = evaluator.evalArray(this.args);
+    console.log(this.$args);
+    var args = evaluator.evalArray(this.$args);
     return args;
   }
 
-  evaluate(env) {
-    // console.group(`Evaluating function call to ${Symbol.keyFor(this.name)}`);
+  evaluate(env : Environment) {
+    // console.group(`Evaluating function call to ${Symbol.keyFor(this.$name)}`);
     var results = null;
 
     var evalEnv = this.getEvalEnv(env);
 
-    var func = this.definition ? this.definition : getEnv(evalEnv, this.name);
+    var func : any = this.$definition ? this.$definition : evalEnv.get(Symbol.keyFor(this.$name));
     // console.log(func);
 
     var args = this.resolveArgs(evalEnv);
 
     // console.log('The original args are');
-    // console.log(this.args);
+    // console.log(this.$args);
     // console.log('The evaluated args are')
     // console.log(args);
     switch (types.getType(func)) {
@@ -398,17 +439,20 @@ export class FunctionCall {
 }
 
 class MapHandler {
-  constructor(symbol, listOfValues) {
-    this.symbol = symbol;
-    this.listOfValues = listOfValues;
+  $symbol: Symbol;
+  $listOfValues: Array<any>;
+  
+  constructor(symbol : symbol, listOfValues : Array<any>) {
+    this.$symbol = symbol;
+    this.$listOfValues = listOfValues;
   }
 
-  evaluate(env) {
+  evaluate(env : Environment) {
     // Return a list of function calls
     var evaluator = new ScriptEvaluator(env);
-    const listOfValues = evaluator.evalCompiledScript(this.listOfValues);
+    const listOfValues = evaluator.evalCompiledScript(this.$listOfValues);
     var results = Array.from(listOfValues, value =>
-      functionService.createFunctionCall(env, this.symbol, value).evaluate(env));
+      functionService.createFunctionCall(env, this.$symbol, value).evaluate(env));
     // console.log('MapHandler::evaluate');
     // console.log(this.symbol);
     // console.log(this.listOfValues);
@@ -423,37 +467,40 @@ class MapHandler {
  * returns a string.
  */
 class DeferredSymbol {
-
+  $env : Environment;
+  $namespace : string;
+  $symbolFunc: graph.GraphNode;
+  
   /**
-   * @param {EnvironmentModel} env 
+   * @param {Environment} env 
    * @param {string} namespace - root namespace for the symbol (using . as a namespace
    * separator)
    * @param {function} symbolFunc - a function that returns a string.  The namespace
    * is concatenated with the results of this function in order to determine the
    * final string representation of the symbol.
    */
-  constructor(env, namespace, symbolFunc) {
-    this.env = env;
-    this.namespace = namespace;
-    this.symbolFunc = symbolFunc;
+  constructor(env : Environment, namespace : string, symbolFunc : graph.GraphNode) {
+    this.$env = env;
+    this.$namespace = namespace;
+    this.$symbolFunc = symbolFunc;
   }
 
   /**
    * Evaluate the symbolFunc provided in the constructor to determine the full
    * symbolic name, and then resolve to the symbol.
    * 
-   * @param {EnvironmentModel} env - environment used when executing symbolFunc.
+   * @param {Environment} env - environment used when executing symbolFunc.
    * @return symbol derived from the namespace + symbolFunc()
    */
-  evaluate(env) {
+  evaluate(env : Environment) {
     // console.group("Evaluating DeferredSymbol");
     // console.log(this.namespace);
     // console.log(this.symbolFunc);
 
     // TODO Don't assume the symbolFunc is a deref
-    var deref = getEnv(env, this.symbolFunc.args[0])
+    var deref = (env, this.$symbolFunc.args[0])
       // console.log(deref);
-    var newSym = types._symbol(Symbol.keyFor(this.namespace) + "." + Symbol.keyFor(deref));
+    var newSym = types._symbol(this.$namespace + "." + deref);
     // console.log(newSym);
     // console.groupEnd();
     return newSym;
@@ -463,7 +510,7 @@ class DeferredSymbol {
 //
 // Environment
 //
-export var globalEnv = newEnv();
+// export var globalEnv = new Environment();
 
 // Compiler namespace functions are defined here
 
@@ -502,16 +549,16 @@ const compiler_namespace = new Map([
   ['call', call_function]
 ]);
 
-export function add_globals(env) {
+export function add_globals(env : Environment) {
   // Core namespace (defined in core.js)
   for (let [k, v] of core.namespace) {
-    setEnv(env, types._symbol(k), v);
+    env.set(types._symbol(k), v);
   }
 
   // Compiler namespace
   for (let [k, v] of compiler_namespace) {
-    setEnv(env, types._symbol(k), v);
+    env.set(types._symbol(k), v);
   }
 }
 
-add_globals(globalEnv);
+// add_globals(globalEnv);

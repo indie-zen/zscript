@@ -13,6 +13,9 @@ export class ScriptEvaluator {
   }
 
   evalArray(array) {
+    console.log('Calling evalArray');
+    console.log(array);
+    console.log(this);
     return Array.from(array, this.evalCompiledScript, this);
   }
 

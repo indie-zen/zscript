@@ -1,16 +1,23 @@
+// @flow
 export const types = require('./types.js');
 export const objToString = require('./printer.js').objToString;
 export const core = require('./core.js');
 export const slurp = core.slurp;
 export const compiler = require('./compiler.js');
-export const env = require('./env.js');
 
-import {
-  newEnv,
-  setEnv,
-  getEnv
-}
-from './env.js';
+declare type SubscriptionListener = (newValue: any, details: { oldValue: any, childEnv: Environment, event: any}) => any;
+
+import { add_globals, Environment } from './env.js';
+
+// import {
+//   newEnv,
+//   setEnv,
+//   getEnv,
+//   Environment
+// }
+// from './env.js';
+
+export { Environment };
 
 /**
  * Context presents a nice facade around the strange mix of procedural and
@@ -18,33 +25,77 @@ from './env.js';
  * 
  * You should probably use Context instead of directly using other portions of
  * ZScript because I believe the Context API is a lot easier to use and more
- * stable.
+ * stable (and eventually the old API will be deprecated)
  */
 export class Context {
-  constructor(rawEnv) {
-    this.env = new env.Environment(rawEnv);
-    compiler.add_globals(this.$getEnvModel());
-    this.valueSinks = new Map();
+  $env : Environment;
+  // TODO What is valueSinks
+  //$valueSinks : Map<;
+
+  constructor(env : ?Environment) {
+    let model;
+    if (env && env.$model) {
+      model = env.$model;
+    }
+    this.$env = new Environment(model);
+    compiler.add_globals(this.$env);
+    //this.$valueSinks = new Map();
   }
 
-  getEnv(env) {
-    env = env || this.env;
-    if (env.constructor.name === 'EnvironmentModel') {
-      env = new env.Environment(env)
-    }
-    if (env.constructor.name !== 'Environment') {
-      throw new Error(`Context.getEnv called with invalid type ${env.constructor.name}`);
-    }
-    return env;
+  getEnv() : Environment {
+    return this.$env;
+    // env = env || this.$env;
+    // if (env.constructor.name === 'EnvironmentModel') {
+    //   env = new Environment(env);
+    // }
+    // if (env.constructor.name !== 'Environment') {
+    //   throw new Error(`Context.getEnv called with invalid type ${env.constructor.name}`);
+    // }
+    // return env;
   }
 
-  $getEnvModel(env) {
-    env = env || this.env;
+  $getEnvModel(env : ?Environment | Object) {
+    env = env || this.$env;
     // If a wrapper is used, get the environment model
     if (env.constructor.name === "Environment") {
       env = env.$model;
     }
     return env;
+  }
+  
+  /**
+   * Get a value from the environment using either a symbol or a symbol name.
+   *
+   * Will not return a GraphNode; use getNode instead of get
+   * 
+   * @param {Symbol|string} key used to identify the index into the environment
+   * @return {any}
+   */
+  get(key : string) {
+    let value = this.getEnv().get(key);
+    if(value.constructor.name === 'GraphNode') {
+      return value.$model;
+    } else {
+      return value;
+    }
+  }
+
+  /**
+   * Get a value from the environment using either a symbol or a symbol name.
+   *
+   * Will not return a GraphNode; use getNode instead of get
+   * 
+   * @param {Symbol|string} key used to identify the index into the environment
+   * @return {any}
+   */
+  getNode(key : string) {
+    let value = this.getEnv().get(key);
+    if(value.constructor.name === 'GraphNode') {
+      return value;
+    } else {
+      // TODO How to handle this?
+      throw new Error(`${key} does not indicate a GraphNode`);
+    }
   }
 
   /**
@@ -54,7 +105,7 @@ export class Context {
    * @param {Environment} env optional environment to use for symbols; 
    *  if not specified then use the global environment for this context.
    */
-  loadScript(scriptString, env) {
+  loadScript(scriptString : string, env : Environment) {
     env = this.$getEnvModel(env);
     var tokens = compiler.reader.tokenize(scriptString);
     while (!tokens.isDone()) {
@@ -71,13 +122,13 @@ export class Context {
    * @param {Environment} env optional environment to use for symbols; 
    *  if not specified then use the global environment for this context.
    */
-  require(symbol, fileName, env) {
-    env = this.$getEnvModel(env);
+  require(symbol : string, fileName : string, env : ?Environment) {
+    env = env || this.$env;
     fileName = core.find_package(fileName);
-    let loadEnv = newEnv();
-    compiler.add_globals(loadEnv);
+    let loadEnv = new Environment();
+    // compiler.add_globals(loadEnv);
     compiler.loadFile(fileName, loadEnv);
-    setEnv(env, Symbol.for(symbol), loadEnv);
+    env.set(Symbol.for(symbol), new Environment(loadEnv));
   }
 
   /**
@@ -87,7 +138,7 @@ export class Context {
    * @param {any} optional value to be published initially
    * @returns {GraphNode} GraphNode that can be used to publish new values
    */
-  publishValue(symbol, initialValue) {
+  publishValue(symbol : string, initialValue : any) {
     return this.def(symbol).publish(initialValue);
   }
 
@@ -98,7 +149,7 @@ export class Context {
    * @param {string|symbol} symbol - symbol used to identify the new ndoe.
    * @param {Environment} optional env - environment where the symbol is stored.
    */
-  def(symbol, env) {
+  def(symbol : string | Symbol, env : Environment) {
     env = this.getEnv(env);
     var node = new compiler.graph.GraphNode();
     env.set(symbol, node);
@@ -107,7 +158,7 @@ export class Context {
 
   // evaluate(node, args, env) {
   //   if (typeof node === 'string') {
-  //     node = this.env.get(node);
+  //     node = this.getNode(node);
   //   }
   //   return node.evaluate(this.$getEnvModel(), args);
   // }
@@ -123,15 +174,15 @@ export class Context {
    * evaluating the script string.  The second array is the environment
    * used during the evaluation, including any modifications.
    **/
-  evaluate(scriptString, defaultEnv) {
-    var childEnv = env.newEnv(this.$getEnvModel(defaultEnv)),
+  evaluate(scriptString : string, defaultEnv : Environment | null) : [Array<mixed>, Environment] {
+    var childEnv = newEnv(this.$getEnvModel(defaultEnv)),
       scripts = compiler.compileString(scriptString, childEnv),
       responses = [];
       
     scripts.map((script) => {
       responses.push(script.evaluate(childEnv, []));
     });
-    return [responses, new env.Environment(childEnv)];
+    return [responses, new Environment(childEnv)];
   }
 
   /**
@@ -158,8 +209,11 @@ export class Context {
    * script is executed.  As with ```evaluate()```, this environment is not 
    * directly modified, and instead a new child environment is used.
    */
-  subscribe(scriptString, listener, defaultEnv) {
-    var childEnv = env.newEnv(this.$getEnvModel(defaultEnv)),
+  subscribe(scriptString : string, 
+    listener : SubscriptionListener, 
+    defaultEnv : ?Environment) {
+      
+    var childEnv = newEnv(this.$getEnvModel(defaultEnv)),
       scripts = compiler.compileString(scriptString, childEnv),
       responses = [];
     scripts.map((script) => {

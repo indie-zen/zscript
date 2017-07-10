@@ -3,6 +3,6 @@ module.exports = {
   moduleIds : false,
   comments : false,
   compact : false,
-  presets : ['es2015-node5'],
+  presets : ['flow', 'es2015-node5'],
   plugins : [ 'transform-decorators-legacy', 'transform-class-properties' ]
 };

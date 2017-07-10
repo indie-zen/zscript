@@ -1,5 +1,4 @@
 
-
 export function getType(obj) {
   if (typeof obj === 'string') {
     if (obj[0] == '\u029e') {

@@ -40,6 +40,3 @@ node dist/zscript/main.js {your zs file}
 ## Examples
 
 The language is changing rapidly and many of the examples are not functional, but the specs, unit tests, etc are a good place to start.
-
-
-

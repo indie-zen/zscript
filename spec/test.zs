@@ -1,2 +1,2 @@
 
-(def x 13)
+(def xyz 13)

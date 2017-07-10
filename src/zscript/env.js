@@ -1,26 +1,38 @@
+// @flow
 const types = require('./types.js');
 
-class EnvironmentModel {
-  toString() {
+class EnvironmentModel extends Object {
+  toString() : string {
     var symbols = Object.getOwnPropertySymbols(this);
-    return "Environment { " + Array.from(symbols,
+    return "EnvironmentModel { " + Array.from(symbols,
         k => `${Symbol.keyFor(k)} : ${this[k]}`).join(', ')
       + " }";
   }
 }
 
 export class Environment {
-  constructor(env) {
-    this.$model = env || newEnv();
+  $model : EnvironmentModel;
+  
+  constructor(model : ?EnvironmentModel) {
+    this.$model = $newEnv(model || new EnvironmentModel());
+  }
+  
+  toString() : string {
+    return ` Environment { ${this.$model.toString()} }`;
+  }
+  
+  newEnv(binds : Array<any> = [], exprs : Array<any>=[]) : Environment {
+    return new Environment($newEnv(this.$model, binds, exprs));
   }
 
   /**
    * Convert to a symbol
    * @todo should this be here or in types?  Probably types
    */
-  toSymbol(str) {
+  toSymbol(str : string | Symbol) : Symbol {
     if(typeof str === 'string') {
       return types._symbol(str);
+    // $FlowFixMe
     } else if (typeof str === 'symbol') {
       return str;
     }
@@ -38,9 +50,15 @@ export class Environment {
    * returned.
    * @return {any} value for the key, or undefined if the key is not found.
    */
-  get(key, ignoreNotFound = false) {
-    var symbol = this.toSymbol(key);
-    return getEnv(this.$model, symbol, ignoreNotFound);
+  get(key : Symbol | string, ignoreNotFound : boolean = false) {
+    var symbol;
+    if (typeof key === 'string') {
+      symbol = this.toSymbol(key);
+    }
+    else {
+      symbol = key;
+    }
+    return $getEnv(this.$model, symbol, ignoreNotFound);
   }
 
   /**
@@ -50,16 +68,23 @@ export class Environment {
    *  If this is a string then it is converted to a symbol.
    * @param {any} value to set
    */
-  set(key, value) {
-    var symbol = this.toSymbol(key);
-    return setEnv(this.$model, symbol, value);
+  set(key : Symbol | string, value : any) {
+    var symbol;
+    if (typeof key === 'string') {
+      symbol = this.toSymbol(key);
+    }
+    else {
+      symbol = key;
+    }
+    return $setEnv(this.$model, symbol, value);
   }
   
 }
 
 // TODO These functions (newEnv, getEnv, setEnv) should be private
-export function newEnv(outer=new EnvironmentModel(), binds=[], exprs=[]) {
-    var e = Object.setPrototypeOf(new EnvironmentModel(), outer)
+function $newEnv(outer=new EnvironmentModel(), binds=[], exprs=[]) : EnvironmentModel {
+    // $FlowFixMe - flow gets this wrong
+    var e : EnvironmentModel = Object.setPrototypeOf(new EnvironmentModel(), outer)
     // Bind symbols in binds to values in exprs
     for (var i=0; i<binds.length; i++) {
         if (types.getType(binds[i]) === "vector") {
@@ -82,27 +107,32 @@ export function newEnv(outer=new EnvironmentModel(), binds=[], exprs=[]) {
             e[binds[i]] = exprs[i]
         }
     }
-    return e
+    return e;
 }
 
-export const getEnv = (env, sym, ignoreNotFound=false) => {
+const $getEnv = (env : EnvironmentModel, sym : Symbol, ignoreNotFound=false) => {
+    // $FlowFixMe
     if (sym in env) {
         return env[sym]
     } else {
-        var symText = Symbol.keyFor(sym);
-        var symbols = symText.split('.');
-        if(symbols.length > 0) {
-          var value = env;
-          for(var x = 0; x < symbols.length; x++) {
-            // console.log("Looking for symbol " + symbols[x]);
-            if(types._symbol(symbols[x]) in value) {
-              value = value[types._symbol(symbols[x])];
-            } else {
-                if (ignoreNotFound) {
-                  return null;
-                }
-                // console.log(value);
-                throw Error(`'${symbols[x]}' not found`);
+        let symText : string = Symbol.keyFor(sym);
+        let symbols : Array<string> = symText.split('.');
+        if(symbols.length > 1) {
+          let value = env;
+          for(let x = 0; x < symbols.length; x++) {
+            sym = Symbol.for(symbols[x]);
+            if(sym in value) {
+              value = value[sym];
+            } 
+            else if(typeof value === 'Environment') {
+              value = value.get(sym);
+            }
+            else {
+              if (ignoreNotFound) {
+                return null;
+              }
+              // console.log(value);
+              throw Error(`'${symbols[x]}' not found`);
             }
           }
           // console.log(`fqn ${symText} resulted in`);
@@ -113,6 +143,12 @@ export const getEnv = (env, sym, ignoreNotFound=false) => {
     }
 }
 
-export function setEnv(env, sym, val) {
-  env[sym] = val;
+function $setEnv(env : Object, sym : Symbol, val : any) {
+  if(typeof sym === 'symbol') {
+    console.log(`Set ${Symbol.keyFor(sym)}`);
+    env[sym] = val;
+  }
+  else {
+    throw new Error(`Cannot set environment using key of type ${typeof sym}`);
+  }
 }

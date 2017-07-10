@@ -4,13 +4,19 @@ var config = require('../config');
 var compilerOptions = require('../babel-options');
 var assign = Object.assign || require('object.assign');
 
+gulp.task('build-spec', function() {
+  return gulp.src(config.paths.spec_src)
+    .pipe(babel(assign({}, compilerOptions)))
+    .pipe(gulp.dest(config.roots.spec_dist));
+});
+
 gulp.task('build-interpreter', function() {
   return gulp.src(config.paths.zscript_src)
     .pipe(babel(assign({}, compilerOptions)))
     .pipe(gulp.dest(config.roots.zscript_exe));
 });
 
-gulp.task('build', ['build-interpreter']); 
+gulp.task('build', ['build-interpreter', 'build-spec']); 
 
 gulp.task('test', ['build'], function(cb) {
   var Jasmine = require('jasmine'),

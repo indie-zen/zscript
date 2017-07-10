@@ -44,6 +44,10 @@ export class GraphNode {
     // this.$publishers = new Set();
   }
 
+  getModel() {
+    return this.$model;
+  }
+
   /*
    * @param {function} listener that gets called when the script results change.
    *  function(newValue, details) where details are 

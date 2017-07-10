@@ -28,6 +28,7 @@ node_modules
 
 # Babel compiled output
 dist
+spec-dist
 
 # CSS generated from Sassy CSS
 app/css

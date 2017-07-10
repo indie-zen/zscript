@@ -1,0 +1,13 @@
+[ignore]
+
+[include]
+src/zscript/
+spec/
+
+[libs]
+src/zscript/zscript.js
+
+[options]
+all=false
+
+[lints]

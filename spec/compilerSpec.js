@@ -27,9 +27,9 @@ describe('compiler', function() {
 
     it('constructs a function call with arguments', function () {
       let script = compileString('(test 1 2)')[0];
-      expect(script.$model.constructor.name).toBe('FunctionCall');
-      expect(script.$model.args[0].$model).toBe(1);
-      expect(script.$model.args[1].$model).toBe(2);
+      expect(script.getModel().constructor.name).toBe('FunctionCall');
+      expect(script.getModel().getArg(0)).toBe(1);
+      expect(script.getModel().getArg(1)).toBe(2);
     });
 
   });

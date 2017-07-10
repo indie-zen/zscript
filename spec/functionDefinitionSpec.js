@@ -1,4 +1,6 @@
-/*global zscript expect fit fdefine spyOn*/
+// @flow
+/*global describe zscript expect fit fdefine spyOn*/
+const zscript = global.zscript;
 
 /**
  * Complete end to end tests for ZScript
@@ -24,7 +26,7 @@ describe('FunctionDefinition', function() {
        * When the FunctionDefinition.body is evaluated, the arguments
        * are resolved as environment variables.
        * In this test, when test.body is evaluated, x and y are 
-       * pased as environment variables.
+       * pased as environment variables to the function.
        **/
       it('resolves arguments as environment variables', function() {
         zs.loadScript(`
@@ -37,10 +39,11 @@ describe('FunctionDefinition', function() {
         let funcCall = compileString('(test 1 2)')[0].$model;
         expect(funcCall.constructor.name).toBe('FunctionCall');
 
-        let funcDef = zs.env.get('test').$model;
+        let funcDef = zs.getEnv().get('test').$model;
         expect(funcDef.constructor.name).toBe('FunctionDefinition');
 
-        let funcBody = funcDef.body;
+        let funcBody = funcDef.getBody();
+        console.log(funcBody);
         let originalFuncBodyEvaluate = funcBody.evaluate.bind(funcBody);
 
         spyOn(funcBody, 'evaluate').and.callFake(function(env) {
@@ -63,12 +66,12 @@ describe('FunctionDefinition', function() {
   `);
         // funcCall is a function call to test using arguments 1 2
         let funcCall = compileString('(test 1 2)')[0].$model;
-        expect(zs.env.get('x').$model).toBe(31);
-        expect(zs.env.get('y').$model).toBe(33);
+        expect(zscript.env.getEnv('x').$model).toBe(31);
+        expect(zscript.env.getEnv('y').$model).toBe(33);
         let env = zs.$getEnvModel();
         expect(funcCall.evaluate(env)).toBe(3);
-        expect(zs.env.get('x').$model).toBe(31);
-        expect(zs.env.get('y').$model).toBe(33);
+        expect(zscript.env.getEnv('x').$model).toBe(31);
+        expect(zscript.env.getEnv('y').$model).toBe(33);
       });
 
     });
