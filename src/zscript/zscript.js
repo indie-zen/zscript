@@ -128,7 +128,7 @@ export class Context {
     let loadEnv = new Environment();
     // compiler.add_globals(loadEnv);
     compiler.loadFile(fileName, loadEnv);
-    env.set(Symbol.for(symbol), new Environment(loadEnv));
+    env.set(Symbol.for(symbol), loadEnv);
   }
 
   /**
@@ -150,7 +150,7 @@ export class Context {
    * @param {Environment} optional env - environment where the symbol is stored.
    */
   def(symbol : string | Symbol, env : Environment) {
-    env = this.getEnv(env);
+    env = this.getEnv();
     var node = new compiler.graph.GraphNode();
     env.set(symbol, node);
     return node;

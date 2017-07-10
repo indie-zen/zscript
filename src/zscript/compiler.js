@@ -55,7 +55,7 @@ class FunctionService {
     return new graph.GraphNode(newFuncCall, env);
   }
 
-  createMap(symbol, list) {
+  createMap(symbol : symbol, list : Array<any>) : MapHandler {
     return new MapHandler(symbol, list);
   }
 
@@ -76,24 +76,17 @@ export function compileScript(ast : Array<any>, env : Environment) : ?graph.Grap
       return;
     }
 
-    var [a0, a1, a2, ...an] = ast;
+    var [a0 : any, a1 : any, a2 : any, ...an : Array<any>] = ast;
     const a0type = types.getType(a0);
-    const a0sym = a0type === 'symbol' ? Symbol.keyFor(a0) : Symbol(':default');
-    switch (a0sym) {
+    const a0str : string = a0type === 'symbol' ? Symbol.keyFor(a0) : a0;
+    const a0sym : Symbol = Symbol.for(a0str);
+    switch (a0str) {
       // Define a variable
       case 'def':
-        console.log(`def ${Symbol.keyFor(a1)}`);
         var def = compileScript(a2, env);
         env.set(a1, def);
-        console.log(env.toString());
-        // if (types.getType(def) === 'symbol') {
-        //   console.log(Symbol.keyFor(def));
-        // }
-        // else {
-        //   console.log(def);
-        // }
         return a1;
-        // Define a new function
+      // Define a new function
       case 'func':
         // console.log("Creating a new function");
         // console.log(a1);
@@ -111,10 +104,10 @@ export function compileScript(ast : Array<any>, env : Environment) : ?graph.Grap
         var loadEnv = new Environment();
         add_globals(loadEnv);
         loadFile(fileName, loadEnv);
-        env.set(env, a1, loadEnv);
+        env.set(a1, loadEnv);
         return null;
       case 'eval':
-        var funcCall = compileScript(a1);
+        var funcCall = compileScript(a1, env);
         // console.log('Evaluating');
         // console.log(funcCall);
         return null;
@@ -168,7 +161,8 @@ export function compileScript(ast : Array<any>, env : Environment) : ?graph.Grap
           // FIXME compileScript for each of the args
           // I think since the rest of the args aren't compiled then they
           // have to be compiled in evalCompiledScript for arrays.
-        return functionService.createFunctionCall(env, a0, ...args);
+        // 
+        return functionService.createFunctionCall(env, a0sym, ...args);
     }
   }
 }

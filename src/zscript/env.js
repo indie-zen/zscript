@@ -121,10 +121,11 @@ const $getEnv = (env : EnvironmentModel, sym : Symbol, ignoreNotFound=false) => 
           let value = env;
           for(let x = 0; x < symbols.length; x++) {
             sym = Symbol.for(symbols[x]);
+            // $FlowFixMe - flow does not support symbols
             if(sym in value) {
               value = value[sym];
-            } 
-            else if(typeof value === 'Environment') {
+            }
+            else if(typeof value === 'object' && value.constructor.name === 'Environment') {
               value = value.get(sym);
             }
             else {
@@ -144,8 +145,8 @@ const $getEnv = (env : EnvironmentModel, sym : Symbol, ignoreNotFound=false) => 
 }
 
 function $setEnv(env : Object, sym : Symbol, val : any) {
+  // $FlowFixMe - flow does not recognize symbols
   if(typeof sym === 'symbol') {
-    console.log(`Set ${Symbol.keyFor(sym)}`);
     env[sym] = val;
   }
   else {

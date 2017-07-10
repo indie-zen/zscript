@@ -319,7 +319,7 @@ describe('zscript', function() {
   });
 
   describe('require', function() {
-    fit('loads a file into a namespace', function() {
+    it('loads a file into a namespace', function() {
       zs.require('test', 'spec/test.zs');
       expect(zs.get('test.xyz')).toBe(13);
     });
