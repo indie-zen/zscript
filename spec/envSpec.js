@@ -10,12 +10,12 @@ describe('env', function () {
     var globalEnv;
     
     beforeAll(function () {
-        globalEnv = zscript.newEnv();
+        globalEnv = new zscript.Environment();
     })
 
     it('stores a value', function () {
-        zscript.setEnv(globalEnv, 'x', 1);
-        expect(zscript.getEnv(globalEnv, 'x')).toBe(1);
+        globalEnv.set('x', 1);
+        expect(globalEnv.get('x')).toBe(1);
     });
     
 });

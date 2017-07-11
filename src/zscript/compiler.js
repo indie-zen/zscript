@@ -67,6 +67,9 @@ class FunctionService {
 export var functionService = new FunctionService();
 
 export function compileScript(ast : Array<any>, env : Environment) : ?graph.GraphNode {
+  if (!env) {
+    throw new Error('Must specify Environment when calling compileScriopt');
+  }
   while (true) {
     if (types.getType(ast) != 'array') {
       return compileAST(ast, env);
@@ -327,6 +330,10 @@ export class FunctionCall {
     else {
       return arg;
     }
+  }
+
+  getName() : symbol {
+    return this.$name;
   }
 
   resolve(env : Environment) {

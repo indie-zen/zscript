@@ -54,8 +54,8 @@ export class Context {
     // return env;
   }
 
-  $getEnvModel(env : ?Environment | Object) {
-    env = env || this.$env;
+  $getEnvModel(env : ?Environment | Object) : EnvironmentModel {
+    env = env || this.getEnv();
     // If a wrapper is used, get the environment model
     if (env.constructor.name === "Environment") {
       env = env.$model;
@@ -105,8 +105,8 @@ export class Context {
    * @param {Environment} env optional environment to use for symbols; 
    *  if not specified then use the global environment for this context.
    */
-  loadScript(scriptString : string, env : Environment) {
-    env = this.$getEnvModel(env);
+  loadScript(scriptString : string, env : ?Environment) {
+    env = env || this.getEnv();
     var tokens = compiler.reader.tokenize(scriptString);
     while (!tokens.isDone()) {
       var ast = compiler.reader.readNextExpression(tokens);
@@ -123,7 +123,7 @@ export class Context {
    *  if not specified then use the global environment for this context.
    */
   require(symbol : string, fileName : string, env : ?Environment) {
-    env = env || this.$env;
+    env = env || this.getEnv();
     fileName = core.find_package(fileName);
     let loadEnv = new Environment();
     // compiler.add_globals(loadEnv);
@@ -149,8 +149,8 @@ export class Context {
    * @param {string|symbol} symbol - symbol used to identify the new ndoe.
    * @param {Environment} optional env - environment where the symbol is stored.
    */
-  def(symbol : string | Symbol, env : Environment) {
-    env = this.getEnv();
+  def(symbol : string | Symbol, env : ?Environment) {
+    env = env || this.getEnv();
     var node = new compiler.graph.GraphNode();
     env.set(symbol, node);
     return node;
@@ -175,7 +175,7 @@ export class Context {
    * used during the evaluation, including any modifications.
    **/
   evaluate(scriptString : string, defaultEnv : Environment | null) : [Array<mixed>, Environment] {
-    var childEnv = newEnv(this.$getEnvModel(defaultEnv)),
+    var childEnv : Environment = new Environment(this.$getEnvModel(defaultEnv)),
       scripts = compiler.compileString(scriptString, childEnv),
       responses = [];
       
@@ -213,7 +213,7 @@ export class Context {
     listener : SubscriptionListener, 
     defaultEnv : ?Environment) {
       
-    var childEnv = newEnv(this.$getEnvModel(defaultEnv)),
+    var childEnv : Environment = new Environment(this.$getEnvModel(defaultEnv)),
       scripts = compiler.compileString(scriptString, childEnv),
       responses = [];
     scripts.map((script) => {

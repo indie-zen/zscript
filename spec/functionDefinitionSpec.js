@@ -9,8 +9,7 @@ describe('FunctionDefinition', function() {
   const compiler = zscript.compiler,
     compileString = compiler.compileString,
     toSymbol = zscript.types._symbol,
-    toVector = zscript.types._vector,
-    newEnv = zscript.env.newEnv;
+    toVector = zscript.types._vector;
 
   var zs;
 

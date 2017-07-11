@@ -8,9 +8,6 @@ const zscript = global.zscript;
 describe('zscript', function() {
   var zs;
 
-  const toSymbol = zscript.types._symbol,
-    toVector = zscript.types._vector;
-
   beforeEach(function() {
     zs = new zscript.Context();
   });
@@ -55,7 +52,7 @@ describe('zscript', function() {
       var innerFuncCall = test.getBody().getArg(0);
       // console.log(innerFuncCall);
       expect(innerFuncCall.constructor.name).toBe('FunctionCall');
-      expect(innerFuncCall.name).toBe(Symbol.for('+'));
+      expect(innerFuncCall.getName()).toBe(Symbol.for('+'));
       expect(innerFuncCall.getArg(0)).toBe(Symbol.for('x'));
       expect(innerFuncCall.getArg(1)).toBe(Symbol.for('y'));
     });

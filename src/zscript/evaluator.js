@@ -1,30 +1,28 @@
+// @flow
 const types = require('./types.js');
-
-import {
-  newEnv,
-  setEnv,
-  getEnv
-}
-from './env.js';
+import { Environment } from './env.js';
 
 export class ScriptEvaluator {
-  constructor(env) {
-    this.env = env;
+  $env : Environment;
+  
+  constructor(env : Environment) {
+    this.$env = env;
   }
 
-  evalArray(array) {
+  evalArray(array : Array<any>) {
     console.log('Calling evalArray');
     console.log(array);
     console.log(this);
+    // $FlowFixMe - flow cannot handle the context (this)
     return Array.from(array, this.evalCompiledScript, this);
   }
 
-  evalCompiledScript(script, args) {
+  evalCompiledScript(script : any, args : ?Array<any>) {
     // console.group('in ScriptEvaluator.evalCompiledScript');
     // console.log(script);
     var results = null;
 
-    //console.log(this.env);
+    //console.log(this.$env);
     //console.log(types.getType(script));
     switch (types.getType(script)) {
       case 'array':
@@ -38,18 +36,19 @@ export class ScriptEvaluator {
         throw new Error('ScriptEvaluator should not get an uncompiled function call.');
         // console.group('Creating and then calling function');
         // const [sym, ...args] = script;
-        // var funcCall = astService.createFunctionCall(this.env, sym, ...args);
-        // results = funcCall.evaluate(this.env);
+        // var funcCall = astService.createFunctionCall(this.$env, sym, ...args);
+        // results = funcCall.evaluate(this.$env);
         // console.groupEnd();
         // break;
       case 'vector':
+        // $FlowFixMe - flow cannot handle the context (this)
         results = Array.from(script, this.evalCompiledScript, this);
         results.__isvector__ = true;
         break;
       case 'symbol':
         // console.group('Getting symbol');
         // console.log(script);
-        var value = getEnv(this.env, script, true);
+        var value = this.$env.get(script, true);
         // If the symbol wasn't found, just return the symbol.
         if (value === null) {
           results = script;
@@ -66,13 +65,13 @@ export class ScriptEvaluator {
       case 'FunctionCall':
       case 'object':
         // console.log(`evalCompiledScript of type ${types.getType(script)}`);
-        results = script.evaluate(this.env, args);
+        results = script.evaluate(this.$env, args);
         break;
       case 'FunctionDefinition':
         // console.log('Entering FunctionDefinition.evaluate');
-        // console.log(this.env.toString());
+        // console.log(this.$env.toString());
         // console.log(args);
-        results = script.evaluate(this.env, args);
+        results = script.evaluate(this.$env, args);
         break;
       default:
         results = script;

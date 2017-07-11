@@ -1,11 +1,7 @@
+// @flow
 export const ScriptEvaluator = require('./evaluator').ScriptEvaluator;
 
-import {
-  newEnv,
-  setEnv,
-  getEnv
-}
-from './env.js';
+import { Environment } from './env.js';
 
 let $performanceWarned = false;
 
@@ -20,7 +16,13 @@ function performanceWarning() {
  * ZScript interpreter language node
  */
 export class GraphNode {
-  constructor(model, env) {
+  $env : Environment;
+  $model : any;
+  $subscribers : Set<any>;
+  $isDirty : boolean;
+  $oldValue : any;
+  
+  constructor(model : any, env : Environment) {
     // If the model isn't defined then this is probably a raw EventSink.
     // // Make sure the model is not undefine / null
     // if(!model) {
@@ -44,7 +46,7 @@ export class GraphNode {
     // this.$publishers = new Set();
   }
 
-  getModel() {
+  getModel() : any {
     return this.$model;
   }
 
@@ -59,7 +61,7 @@ export class GraphNode {
    * @param {EnvironmentModel} env
    * @param {list} args list of arguments coming from a FunctionCall
    */
-  subscribe(node, env, args) {
+  subscribe(node : GraphNode, env : Environment, args : Array<any>) {
     this.$subscribers.add(node);
 
     // TODO Keep this as the current environment?
@@ -84,13 +86,13 @@ export class GraphNode {
     }
   }
 
-  set(value) {
+  set(value : any) {
     this.$model = value;
     this.$oldValue = value;
     this.setDirty();
   }
 
-  evaluate(env, args) {
+  evaluate(env : Environment, args : ?Array<any>) {
     // TODO distinguish between evaluating a subscription vs a procedure
     // subscriptions should set isDirty = false, but procedures ignore
     // isDirty (or fix the memoization)
@@ -116,7 +118,7 @@ export class GraphNode {
    * Notify subscribers that this value represented by this GraphNode 
    * has changed.
    */
-  notify(details) {
+  notify(details : any) {
     var that = this;
 
     that.$subscribers.forEach((subscriber) => {
@@ -150,7 +152,7 @@ export class GraphNode {
     });
   }
 
-  publish(value, details) {
+  publish(value : any, details : any) {
     // TODO Make sure not overwriting a model that is an AST
     if (this.$oldValue !== value) {
       this.$oldValue = value;
@@ -169,7 +171,7 @@ export class GraphNode {
    * Mark this GraphNode and all of it's subscribers as dirty so that evaluate
    * will re-evaluate.
    */
-  setDirty(notifier) {
+  setDirty(notifier : any) {
     // If already marked dirty, don't bother doing it again.
     if (this.$isDirty) {
       return;
@@ -183,7 +185,7 @@ export class GraphNode {
     });
   }
 
-  getSubscribersAsArray() {
+  getSubscribersAsArray() : Array<any> {
     return [...this.$subscribers];
   }
 }
