@@ -68,8 +68,9 @@ export class GraphNode {
     this.$env = env;
 
     if (this.$model) {
+      // $FlowFixMe flow does not support symbols
       if (typeof this.$model === 'symbol') {
-        this.$model = getEnv(env, this.$model);
+        this.$model = env.get(this.$model);
       }
       switch (typeof this.$model) {
         case 'number':
@@ -79,7 +80,7 @@ export class GraphNode {
         default:
           // TODO Subsribe to elements in an Array
           // args is only needed by a FunctionDefinition (I think)
-          this.$model.subscribe(this, env, args);
+          (this.$model : GraphNode).subscribe(this, env, args);
           // this.$publishers.add(this.$model);
           break;
       }

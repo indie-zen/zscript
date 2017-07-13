@@ -19,6 +19,26 @@ describe('FunctionDefinition', function() {
 
   describe('body', function() {
 
+    describe('getEvalEnv', function () {
+      it('resolves arguments as environment variables', function() {
+        zs.loadScript(`
+(def test
+  (func [x y]
+    (+ x y)))
+  `);
+
+        // funcCall is a function call to test using arguments 1 2
+        let funcCall = compileString('(test 1 2)')[0].$model;      
+
+        console.log('global:');
+        console.log(zs.getEnv().toString());
+
+        let evalEnv = funcCall.getEvalEnv(zs.getEnv());
+        expect(evalEnv.get('test').$model).toBeTruthy();
+      });
+      
+    });
+
     describe('evaluate', function() {
 
       /**
@@ -46,12 +66,12 @@ describe('FunctionDefinition', function() {
         let originalFuncBodyEvaluate = funcBody.evaluate.bind(funcBody);
 
         spyOn(funcBody, 'evaluate').and.callFake(function(env) {
-          expect(zscript.env.getEnv(env, Symbol.for('x'))).toBeTruthy();
-          expect(zscript.env.getEnv(env, Symbol.for('y'))).toBeTruthy();
+          expect(env.get('x')).toBe(1);
+          expect(env.get('y')).toBe(2);
           return originalFuncBodyEvaluate(env);
         });
 
-        let env = zs.$getEnvModel();
+        let env = zs.getEnv();
         expect(funcCall.evaluate(env)).toBe(3);
       });
 
@@ -63,21 +83,18 @@ describe('FunctionDefinition', function() {
   (func [x y]
     (+ x y)))
   `);
+        let env = zs.getEnv();
         // funcCall is a function call to test using arguments 1 2
         let funcCall = compileString('(test 1 2)')[0].$model;
-        expect(zscript.env.getEnv('x').$model).toBe(31);
-        expect(zscript.env.getEnv('y').$model).toBe(33);
-        let env = zs.$getEnvModel();
+        expect(env.get('x').$model).toBe(31);
+        expect(env.get('y').$model).toBe(33);
         expect(funcCall.evaluate(env)).toBe(3);
-        expect(zscript.env.getEnv('x').$model).toBe(31);
-        expect(zscript.env.getEnv('y').$model).toBe(33);
+        expect(env.get('x').$model).toBe(31);
+        expect(env.get('y').$model).toBe(33);
       });
 
     });
 
   });
-
-
-
 
 });

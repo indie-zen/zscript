@@ -7,12 +7,6 @@ export const reader = require('./reader.js');
 
 require('console-group').install();
 
-// import {
-//   newEnv,
-//   setEnv,
-//   getEnv
-// }
-// from './env.js';
 import { Environment } from './env.js';
 
 export const graph = require('./graph.js');
@@ -48,7 +42,7 @@ class FunctionService {
     return new graph.GraphNode(newFunc);
   }
 
-  createFunctionCall(env : Environment, name : symbol, ...args : Array<any>) {
+  createFunctionCall(env : Environment, name : symbol, ...args : Array<any>) : graph.GraphNode {
     // TODO Need to track this?  Probably, to eventually determine
     // if all calls evaluate to a function that exists.
     const newFuncCall = new FunctionCall(env, name, ...args);
@@ -279,7 +273,8 @@ class ScriptResolver {
       case 'array':
         // FIXME as with evalCompiledScript, this needs to be fixed
         const [sym, ...args] = script;
-        var funcCall = functionService.createFunctionCall(this.$env, sym, ...args);
+        results = functionService.createFunctionCall(this.$env, sym, ...args);
+        var funcCall : FunctionCall = results.getModel();
         results = funcCall.resolve(this.$env);
         break;
       case 'vector':
@@ -380,14 +375,16 @@ export class FunctionCall {
   /**
    * Create an environment by merging the namespace environment
    * with the argument environment.
+   * 
+   * @param {Environment} env - current environment scope
    */
   getEvalEnv(env : Environment) {
     // Create an environment by merging the namespace environment
     // with the argument environment.
-    var evalEnv = this.$env.newEnv();
-    add_globals(evalEnv);
+    var evalEnv : Environment = env.newEnv();
     // Overlay with symbols from function call
     for (var symbol of Object.getOwnPropertySymbols(env)) {
+      console.log(`Setting ${Symbol.keyFor(symbol)}`);
       evalEnv.set(symbol, env.get(symbol));
     }
     return evalEnv;
@@ -401,20 +398,21 @@ export class FunctionCall {
   }
 
   evaluate(env : Environment) {
-    // console.group(`Evaluating function call to ${Symbol.keyFor(this.$name)}`);
+    console.group(`Evaluating function call to ${Symbol.keyFor(this.$name)}`);
+    console.log(this);
     var results = null;
 
     var evalEnv = this.getEvalEnv(env);
 
     var func : any = this.$definition ? this.$definition : evalEnv.get(Symbol.keyFor(this.$name));
-    // console.log(func);
+    console.log(func);
 
     var args = this.resolveArgs(evalEnv);
 
-    // console.log('The original args are');
-    // console.log(this.$args);
-    // console.log('The evaluated args are')
-    // console.log(args);
+    console.log('The original args are');
+    console.log(this.$args);
+    console.log('The evaluated args are')
+    console.log(args);
     switch (types.getType(func)) {
       case 'function':
         // console.log('Calling function');
@@ -434,7 +432,7 @@ export class FunctionCall {
         throw new Error(`Function type is not supported: ${types.getType(func)}`);
     }
     // console.log(results);
-    // console.groupEnd();
+    console.groupEnd();
     return results;
   }
 }
@@ -494,17 +492,18 @@ class DeferredSymbol {
    * @return symbol derived from the namespace + symbolFunc()
    */
   evaluate(env : Environment) {
-    // console.group("Evaluating DeferredSymbol");
+    console.group("Evaluating DeferredSymbol");
     // console.log(this.namespace);
     // console.log(this.symbolFunc);
 
     // TODO Don't assume the symbolFunc is a deref
-    var deref = (env, this.$symbolFunc.args[0])
+    // var deref = (env, this.$symbolFunc.$args[0])
       // console.log(deref);
-    var newSym = types._symbol(this.$namespace + "." + deref);
+    // var newSym = types._symbol(this.$namespace + "." + deref);
     // console.log(newSym);
-    // console.groupEnd();
-    return newSym;
+    console.groupEnd();
+    // return newSym;
+    throw new Error('TODO Implemented DeferredSymbol')
   }
 }
 

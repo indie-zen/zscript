@@ -166,7 +166,7 @@ describe('zscript', function() {
 
     it('constants can be evaluated', function() {
       zs.loadScript('(def x 1)');
-      var x = zs.env.get('x');
+      var x = zs.getEnv().get('x');
       expect(x.constructor.prototype.hasOwnProperty('evaluate')).toBe(true);
     });
 
@@ -230,15 +230,15 @@ describe('zscript', function() {
     (sum_of_list_of_two [x y])))
     `);
       // console.log('Parsed positional destructuring.');
-      // console.log(zs.env.get('test'));
+      // console.log(zs.getEnv().get('test'));
 
-      var funcCall = zs.env.get('test').$model.body.$model;
+      var funcCall = zs.getEnv().get('test').getModel().getBody();
       // console.log('Function call:');
       // console.log(funcCall);
 
       // console.log('Argument');
-      var args = funcCall.args[0].$model;
-      // console.log(args);
+      var arg = funcCall.getArg(0);
+      // console.log(arg);
       expect(zs.evaluate('(test 1 2)')[0][0]).toBe(3);
     });
 

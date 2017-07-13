@@ -109,7 +109,7 @@ describe('zscript pub/sub', function() {
     // Publish a new value; the returned listener is a function that
     // is called with the new value.
     zs.loadScript('(def x 1)');
-    var x = zs.env.get('x');
+    var x = zs.getEnv().get('x');
 
     zs.loadScript(`
 (def test

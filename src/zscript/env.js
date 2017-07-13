@@ -50,7 +50,7 @@ export class Environment {
    * returned.
    * @return {any} value for the key, or undefined if the key is not found.
    */
-  get(key : Symbol | string, ignoreNotFound : boolean = false) {
+  get(key : Symbol | string, ignoreNotFound : boolean = false) : any {
     var symbol;
     if (typeof key === 'string') {
       symbol = this.toSymbol(key);
