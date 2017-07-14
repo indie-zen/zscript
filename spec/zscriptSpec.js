@@ -119,7 +119,7 @@ describe('zscript', function() {
 
 (def test
   (func []
-    (lambda2 [x y])))
+    (lambda2 [1 2])))
     `);
       var response = zs.evaluate('(test)'),
         responses = response[0],
@@ -176,7 +176,7 @@ describe('zscript', function() {
   (func [x y]
     (+ x y)))
     `);
-      var sum = zs.env.get('sum');
+      var sum = zs.getEnv().get('sum');
       expect(sum.constructor.prototype.hasOwnProperty('evaluate')).toBe(true);
     });
 
@@ -287,7 +287,7 @@ describe('zscript', function() {
 
 (def test
   (func []
-    (lambda2 [x y])))
+    (lambda2 [1 2])))
     `);
       expect(zs.evaluate('(test)')[0][0]).toEqual(2);
     });

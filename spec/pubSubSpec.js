@@ -15,7 +15,7 @@ describe('zscript pub/sub', function() {
     it('can subscribe to a simple node', function() {
       var listener = jasmine.createSpy('listener');
       zs.loadScript('(def x 1)');
-      var x = zs.env.get('x');
+      var x = zs.getEnv().get('x');
 
       function callback(newValue, details) {
         return listener(newValue);
@@ -59,7 +59,7 @@ describe('zscript pub/sub', function() {
 
       // Third level is the (test) function call
       var sub2 = sub1.getSubscribersAsArray()[0];
-      expect(sub2.$model.name).toBe(Symbol.for('test'));
+      expect(sub2.getModel().getName()).toBe(Symbol.for('test'));
 
       // Fourth level is the zs.subscribe callback
       var sub3 = sub2.getSubscribersAsArray()[0];
@@ -73,7 +73,7 @@ describe('zscript pub/sub', function() {
       // Publish a new value; the returned listener is a function that
       // is called with the new value.
       zs.loadScript('(def x 1)');
-      var x = zs.env.get('x');
+      var x = zs.getEnv().get('x');
 
       zs.loadScript(`
 (def test
