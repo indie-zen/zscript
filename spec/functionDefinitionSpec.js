@@ -28,13 +28,13 @@ describe('FunctionDefinition', function() {
   `);
 
         // funcCall is a function call to test using arguments 1 2
-        let funcCall = compileString('(test 1 2)')[0].$model;      
+        let funcCall = compileString('(test 1 2)')[0].getModel();      
 
         console.log('global:');
         console.log(zs.getEnv().toString());
 
         let evalEnv = funcCall.getEvalEnv(zs.getEnv());
-        expect(evalEnv.get('test').$model).toBeTruthy();
+        expect(evalEnv.get('test').getModel()).toBeTruthy();
       });
       
     });
@@ -55,10 +55,10 @@ describe('FunctionDefinition', function() {
   `);
 
         // funcCall is a function call to test using arguments 1 2
-        let funcCall = compileString('(test 1 2)')[0].$model;
+        let funcCall = compileString('(test 1 2)')[0].getModel();
         expect(funcCall.constructor.name).toBe('FunctionCall');
 
-        let funcDef = zs.getEnv().get('test').$model;
+        let funcDef = zs.getEnv().get('test').getModel();
         expect(funcDef.constructor.name).toBe('FunctionDefinition');
 
         let funcBody = funcDef.getBody();
@@ -85,12 +85,12 @@ describe('FunctionDefinition', function() {
   `);
         let env = zs.getEnv();
         // funcCall is a function call to test using arguments 1 2
-        let funcCall = compileString('(test 1 2)')[0].$model;
-        expect(env.get('x').$model).toBe(31);
-        expect(env.get('y').$model).toBe(33);
+        let funcCall = compileString('(test 1 2)')[0].getModel();
+        expect(env.get('x').getModel()).toBe(31);
+        expect(env.get('y').getModel()).toBe(33);
         expect(funcCall.evaluate(env)).toBe(3);
-        expect(env.get('x').$model).toBe(31);
-        expect(env.get('y').$model).toBe(33);
+        expect(env.get('x').getModel()).toBe(31);
+        expect(env.get('y').getModel()).toBe(33);
       });
 
     });

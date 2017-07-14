@@ -21,8 +21,8 @@ describe('zscript', function() {
       var y = zs.def('y');
       y.set(1);
 
-      expect(x.$model).toBe(y.$model);
-      expect(x.$isDirty).toBe(y.$isDirty);
+      expect(x.getModel()).toBe(y.getModel());
+      expect(x.isDirty()).toBe(y.isDirty());
     });
 
     it('defines a symbol for a constant', function() {
@@ -46,8 +46,8 @@ describe('zscript', function() {
       var test = zs.get('test');
       // console.log('test is');
       // console.log(test);
-      // console.log('The $model.body of test is');
-      // console.log(test.$model.body);
+      // console.log('The getModel().getBody() of test is');
+      // console.log(test.getModel().getBody());
       // console.log('This  should be a function call to (+ x y)');
       var innerFuncCall = test.getBody().getArg(0);
       // console.log(innerFuncCall);
@@ -83,8 +83,8 @@ describe('zscript', function() {
       var arg = funcCall.getArg(0);
       // console.log(arg);
       expect(zscript.types.getType(arg)).toBe('vector');
-      expect(arg[0].$model).toBe(Symbol.for('x'));
-      expect(arg[1].$model).toBe(Symbol.for('y'));
+      expect(arg[0].getModel()).toBe(Symbol.for('x'));
+      expect(arg[1].getModel()).toBe(Symbol.for('y'));
     });
 
   });

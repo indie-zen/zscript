@@ -50,6 +50,9 @@ export class GraphNode {
     return this.$model;
   }
 
+  isDirty() : boolean {
+    return this.$isDirty;
+  }
   /*
    * @param {function} listener that gets called when the script results change.
    *  function(newValue, details) where details are 
