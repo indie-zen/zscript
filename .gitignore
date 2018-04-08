@@ -35,3 +35,6 @@ app/css
 
 # Ignore generated code
 gen
+
+# Ignore zedstate because it changes so often and I really don't need to share it
+.zedstate

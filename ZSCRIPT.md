@@ -195,12 +195,12 @@ Example:
 ```
 ### chain?
 
-Create a call chain. *I'm not sure if this is useful enough to require, or if the syntax is correct.*
+Create a call chain.
 
 Example:
 
 ```
-(chain 1 inc dec)
+(chain inc dec 1)
 => (inc (dec 1))
 ```
 
