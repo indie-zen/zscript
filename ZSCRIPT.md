@@ -48,6 +48,25 @@ Because of this, special care needed to be taken to ensure this rule is never br
 Syntax thoughts and keywords
 ---
 
+One major enhancement I'm currently contemplating is adding types, possibly as
+optional types the way Flow works, or maybe not.  Although there's no need
+to retain backwards compatibility syntax wise, I do like how Flow / Typescript
+do the `argumentName : optional type`.
+
+For this function definition:
+```
+(func [x y] (+ x y))
+```
+which looks better?
+
+```
+(func [x : int32 y : int32] (+ x y) : int64)
+(func [x:int32 y:int32]:int64 (+ x y))
+```
+
+I think I like the latter... but I'm still thinking about it.
+---
+
 *General thoughts about special keywords within the language:*
 
 This language is still under construction, so there are quite a few sections within this definition that have questions (marked with a question mark).  As I continue developing with this language then those questions will be answered and the language will become more solidified.
